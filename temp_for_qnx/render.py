@@ -1,6 +1,7 @@
 from config import DEVICE_HEIGHT, DEVICE_WIDTH
 from graphics.pet import Pet
 from temp_for_qnx.parse_for_qnx import load_1bit_bmp, pack_pixels_8vertical, send_buffer_to_oled
+import time
 
 
 def compose_frame(pet_pixels, health_bar_pixels, width=DEVICE_WIDTH, height=DEVICE_HEIGHT):
@@ -27,14 +28,12 @@ def render_frame(frame_pixels):
     send_buffer_to_oled(buf)  # Your SPI write function
 
 def run_graphics_loop():
-    import time
-
     koi = Pet("idle", 0, 3)
     koi_frames = koi.create_pet_frames("koi")
 
+    frame_index = 0
+    
     while True:
-        frame_index = 0
-
         current_frame = compose_frame(koi_frames["idle"][frame_index])
         frame_index = (frame_index + 1) % len(koi_frames["idle"])
         time.sleep(1)
