@@ -41,8 +41,8 @@ def setup():
                 cs_pin = digitalio.DigitalInOut(board.D18)      # GPIO 18 (not SPI)
                 
                 print("Creating SSD1327 display object...")
-                # SSD1327 is 128x128, not 128x96
-                display = adafruit_ssd1327.SSD1327_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
+                # SSD1327 initialization
+                display = adafruit_ssd1327.SSD1327(spi, dc_pin, reset_pin, cs_pin, width=128, height=96)
                 print("Setting contrast to maximum...")
                 display.contrast(255)  # Set to maximum brightness
                 print("Clearing display...")
@@ -65,7 +65,7 @@ def setup():
                     print("Setting up CS pin (GPIO 16)...")
                     cs_pin = digitalio.DigitalInOut(board.D16)      # GPIO 16
                     print("Creating SSD1327 display object...")
-                    display = adafruit_ssd1327.SSD1327_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
+                    display = adafruit_ssd1327.SSD1327(spi, dc_pin, reset_pin, cs_pin, width=128, height=96)
                     print("Clearing display...")
                     display.fill(0)
                     print("Showing display...")
@@ -86,7 +86,7 @@ def setup():
                         print("Setting up CS pin (GPIO 20)...")
                         cs_pin = digitalio.DigitalInOut(board.D20)      # GPIO 20
                         print("Creating SSD1327 display object...")
-                        display = adafruit_ssd1327.SSD1327_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
+                        display = adafruit_ssd1327.SSD1327(spi, dc_pin, reset_pin, cs_pin, width=128, height=96)
                         print("Clearing display...")
                         display.fill(0)
                         print("Showing display...")
@@ -183,7 +183,7 @@ def run_loop(device, pet):
         draw = ImageDraw.Draw(image)
         
         # Draw a simple rectangle to test if display works
-        draw.rectangle([10, 10, 118, 118], outline=1, fill=0)
+        draw.rectangle([10, 10, 118, 96], outline=1, fill=0)
         draw.text((20, 20), "TEST", fill=1)
         draw.text((20, 40), f"Frame: {frame_count}", fill=1)
         
