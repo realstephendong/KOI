@@ -4,7 +4,7 @@ from PIL import ImageDraw
 from graphics.pet import Pet
 from button import Button
 from graphics.ui import draw_ui
-from luma.emulator.device import pygame
+# from luma.emulator.device import pygame
 
 USE_EMULATOR = False
 FPS = 1
