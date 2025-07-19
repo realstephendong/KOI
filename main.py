@@ -2,9 +2,10 @@ import time
 from PIL import Image
 from PIL import ImageDraw
 from graphics.pet import Pet
-from button import Button
+# from button import Button
 from graphics.ui import draw_ui
-from luma.emulator.device import pygame
+# from luma.emulator.device import pygame
+from gpiozero import Button
 
 USE_EMULATOR = False
 FPS = 1
@@ -61,14 +62,14 @@ def pet_selection_loop(device):
         
     while True:
         # Handle button presses
-        if blue_button.is_pressed():
+        if blue_button.is_pressed:
             global state, pet_choice
             state = "pet"
             pet_choice = pet_choices[pet_index]
             print(f"Confirmed pet choice: {pet_choice}")
             return current_pet
             
-        if yellow_button.is_pressed():
+        if yellow_button.is_pressed:
             pet_index = (pet_index + 1) % len(pet_choices)
             current_pet = create_pet(pet_choices[pet_index])
             print(f"Selected pet: {pet_choices[pet_index]}")
@@ -120,6 +121,8 @@ def main():
         run_loop(device, selected_pet)
     
     elif game_state == "pet":
+        print("Yellow ", yellow_button.is_pressed)
+        print("Blue ", blue_button.is_pressed)
         pet = create_pet(pet_choice)
 
         run_loop(device, pet)
