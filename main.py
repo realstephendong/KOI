@@ -42,7 +42,7 @@ def setup():
                 
                 print("Creating SSD1327 display object...")
                 # SSD1327 is 128x128, not 128x96
-                display = adafruit_ssd1327.SSD1327_SPI(128, 128, spi, dc_pin, reset_pin, cs_pin)
+                display = adafruit_ssd1327.SSD1327_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
                 print("Setting contrast to maximum...")
                 display.contrast(255)  # Set to maximum brightness
                 print("Clearing display...")
@@ -64,8 +64,8 @@ def setup():
                     reset_pin = digitalio.DigitalInOut(board.D13)   # GPIO 13
                     print("Setting up CS pin (GPIO 16)...")
                     cs_pin = digitalio.DigitalInOut(board.D16)      # GPIO 16
-                    print("Creating SSD1306 display object...")
-                    display = adafruit_ssd1306.SSD1306_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
+                    print("Creating SSD1327 display object...")
+                    display = adafruit_ssd1327.SSD1327_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
                     print("Clearing display...")
                     display.fill(0)
                     print("Showing display...")
@@ -85,8 +85,8 @@ def setup():
                         reset_pin = digitalio.DigitalInOut(board.D13)   # GPIO 13
                         print("Setting up CS pin (GPIO 20)...")
                         cs_pin = digitalio.DigitalInOut(board.D20)      # GPIO 20
-                        print("Creating SSD1306 display object...")
-                        display = adafruit_ssd1306.SSD1306_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
+                        print("Creating SSD1327 display object...")
+                        display = adafruit_ssd1327.SSD1327_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
                         print("Clearing display...")
                         display.fill(0)
                         print("Showing display...")
@@ -161,13 +161,13 @@ def run_loop(device, pet):
     
     # First, let's do a simple power-on test
     print("Testing display with full white screen...")
-    test_image = Image.new("1", (128, 128), 1)  # All white - SSD1327 is 128x128
+    test_image = Image.new("1", (128, 96), 1)  # All white - SSD1327 is 128x128
     device.image(test_image)
     device.show()
     time.sleep(2)  # Show white for 2 seconds
     
     print("Testing display with full black screen...")
-    test_image = Image.new("1", (128, 128), 0)  # All black - SSD1327 is 128x128
+    test_image = Image.new("1", (128, 96), 0)  # All black - SSD1327 is 128x128
     device.image(test_image)
     device.show()
     time.sleep(1)  # Show black for 1 second
@@ -177,7 +177,7 @@ def run_loop(device, pet):
         print(f"Frame {frame_count}: Drawing test pattern...")
         
         # Setup canvas - SSD1327 is 128x128
-        image = Image.new("1", (128, 128))
+        image = Image.new("1", (128, 96))
         
         # Draw a simple test pattern instead of complex graphics
         draw = ImageDraw.Draw(image)
