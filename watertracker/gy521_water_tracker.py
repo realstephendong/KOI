@@ -312,6 +312,30 @@ class GY521WaterTrackerFixed:
         """Check if currently drinking"""
         return self.is_drinking
     
+    def detect_shake(self, shake_threshold=1.2, window_size=5):
+        """
+        Detect if the bottle is being shaken based on rapid changes in acceleration.
+        shake_threshold: minimum change in acceleration (g) to consider as shaking
+        window_size: number of samples to consider for shake detection
+        """
+        if not hasattr(self, 'accel_history'):
+            self.accel_history = []
+        # Store the current acceleration vector magnitude
+        accel_mag = math.sqrt(self.accel_x**2 + self.accel_y**2 + self.accel_z**2)
+        self.accel_history.append(accel_mag)
+        if len(self.accel_history) > window_size:
+            self.accel_history.pop(0)
+        # Only check for shake if we have enough samples
+        if len(self.accel_history) == window_size:
+            # Calculate the max difference in the window
+            max_diff = max(self.accel_history) - min(self.accel_history)
+            if max_diff > shake_threshold:
+                if not hasattr(self, '_shake_printed') or not self._shake_printed:
+                    print("Shake detected! (max accel diff: {:.2f}g)".format(max_diff))
+                    self._shake_printed = True
+            else:
+                self._shake_printed = False
+    
     def run(self):
         """Main loop for water tracking"""
         print("KOI - GY521 Water Consumption Tracker (QNX Version with Robust Detection)")
@@ -334,6 +358,7 @@ class GY521WaterTrackerFixed:
                     self.read_accelerometer()
                     self.calculate_tilt_angles()
                     self.detect_drinking(current_time)
+                    self.detect_shake()  # Call shake detection
                     last_update_time = current_time
                 
                 # Print status every second
