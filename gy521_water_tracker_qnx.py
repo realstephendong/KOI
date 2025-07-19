@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-KOI - GY521 Water Consumption Tracker for Raspberry Pi
+KOI - GY521 Water Consumption Tracker for Raspberry Pi (QNX Version)
 
 This code uses a GY521 (MPU6050) gyroscope module to detect when a water bottle
 is tilted for drinking and calculates water consumption based on tilt angle and duration.
 
 Hardware:
 - GY521 (MPU6050) gyroscope module
-- Raspberry Pi 4
+- Raspberry Pi 4 with QNX 8.0
 
 Connections:
 - VCC to 3.3V or 5V (GY521 works with both)
@@ -21,7 +21,7 @@ import time
 import math
 from datetime import datetime
 
-class GY521WaterTracker:
+class GY521WaterTrackerQNX:
     def __init__(self):
         # GY521 (MPU6050) I2C address
         self.MPU6050_ADDR = 0x68
@@ -58,13 +58,21 @@ class GY521WaterTracker:
         self.total_water_consumed = 0.0
         self.session_water_consumed = 0.0
         
-        # Initialize I2C bus
+        # Initialize I2C bus for QNX
         try:
-            self.bus = smbus.SMBus(1)  # Use I2C bus 1 on Raspberry Pi
-            print("I2C bus initialized successfully")
+            # QNX uses /dev/i2c1 instead of /dev/i2c-1
+            self.bus = smbus.SMBus('/dev/i2c1')
+            print("I2C bus initialized successfully on QNX")
         except Exception as e:
             print(f"Failed to initialize I2C bus: {e}")
-            raise
+            print("Trying alternative I2C bus...")
+            try:
+                # Try i2c0 as fallback
+                self.bus = smbus.SMBus('/dev/i2c0')
+                print("I2C bus initialized successfully using i2c0")
+            except Exception as e2:
+                print(f"Failed to initialize I2C bus with i2c0: {e2}")
+                raise
         
         # Initialize MPU6050
         if not self.init_mpu6050():
@@ -226,7 +234,7 @@ class GY521WaterTracker:
     
     def run(self):
         """Main loop for water tracking"""
-        print("KOI - GY521 Water Consumption Tracker")
+        print("KOI - GY521 Water Consumption Tracker (QNX Version)")
         print("Initialization complete!")
         print("Tilt the bottle to start tracking water consumption...")
         print()
@@ -261,8 +269,9 @@ class GY521WaterTracker:
 
 if __name__ == "__main__":
     try:
-        tracker = GY521WaterTracker()
+        tracker = GY521WaterTrackerQNX()
         tracker.run()
     except Exception as e:
         print(f"Error: {e}")
-        print("Make sure the GY521 module is properly connected to the Raspberry Pi.") 
+        print("Make sure the GY521 module is properly connected to the Raspberry Pi.")
+        print("On QNX, ensure I2C is enabled and the device files exist.") 

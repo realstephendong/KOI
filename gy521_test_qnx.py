@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-GY521 Test Script for Raspberry Pi
+GY521 Test Script for Raspberry Pi (QNX Version)
 
 Simple test to verify GY521 (MPU6050) module is working correctly
 and to help with calibration.
@@ -10,7 +10,7 @@ import smbus2 as smbus
 import time
 import math
 
-class GY521Test:
+class GY521TestQNX:
     def __init__(self):
         # GY521 (MPU6050) I2C address
         self.MPU6050_ADDR = 0x68
@@ -26,13 +26,21 @@ class GY521Test:
         self.tilt_angle_x = 0.0
         self.tilt_angle_y = 0.0
         
-        # Initialize I2C bus
+        # Initialize I2C bus for QNX
         try:
-            self.bus = smbus.SMBus(1)  # Use I2C bus 1 on Raspberry Pi
-            print("I2C bus initialized successfully")
+            # QNX uses /dev/i2c1 instead of /dev/i2c-1
+            self.bus = smbus.SMBus('/dev/i2c1')
+            print("I2C bus initialized successfully on QNX")
         except Exception as e:
             print(f"Failed to initialize I2C bus: {e}")
-            raise
+            print("Trying alternative I2C bus...")
+            try:
+                # Try i2c0 as fallback
+                self.bus = smbus.SMBus('/dev/i2c0')
+                print("I2C bus initialized successfully using i2c0")
+            except Exception as e2:
+                print(f"Failed to initialize I2C bus with i2c0: {e2}")
+                raise
         
         # Initialize MPU6050
         self.init_mpu6050()
@@ -74,8 +82,8 @@ class GY521Test:
     
     def run_test(self):
         """Run the test loop"""
-        print("GY521 Test Script")
-        print("================")
+        print("GY521 Test Script (QNX Version)")
+        print("===============================")
         print("MPU6050 initialized!")
         print("Keep the sensor level and still for testing...")
         print()
@@ -99,8 +107,9 @@ class GY521Test:
 
 if __name__ == "__main__":
     try:
-        test = GY521Test()
+        test = GY521TestQNX()
         test.run_test()
     except Exception as e:
         print(f"Error: {e}")
-        print("Make sure the GY521 module is properly connected to the Raspberry Pi.") 
+        print("Make sure the GY521 module is properly connected to the Raspberry Pi.")
+        print("On QNX, ensure I2C is enabled and the device files exist.") 
