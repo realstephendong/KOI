@@ -4,9 +4,9 @@ from PIL import ImageDraw
 from graphics.pet import Pet
 from button import Button
 from graphics.ui import draw_ui
-from luma.core.render import canvas
+from luma.emulator.device import pygame
 
-USE_EMULATOR = True
+USE_EMULATOR = False
 FPS = 1
 
 select_button = Button(17)
@@ -14,46 +14,42 @@ confirm_button = Button(27)
 
 def setup():
     if USE_EMULATOR:
-        from luma.emulator.device import pygame
+        # Emulator mode (same as before)
         def get_device():
             return pygame(width=128, height=96)
     else:
-        from luma.core.interface.serial import spi
-        from luma.oled.device import ssd1306
-        def get_device():
-            serial = spi(port=0, device=0, gpio_DC=22, gpio_RST=13)
-            return ssd1306(serial)
-        
-    device = get_device()
+        # SPI-based display for Raspberry Pi 5 using Adafruit library
+        import board
+        import digitalio
+        import adafruit_ssd1306
 
-    return device
+        def get_device():
+            spi = board.SPI()
+            dc_pin = digitalio.DigitalInOut(board.D22)     # GPIO 22
+            reset_pin = digitalio.DigitalInOut(board.D13)   # GPIO 13
+            cs_pin = digitalio.DigitalInOut(board.CE0)      # GPIO 8 (CE0)
+            display = adafruit_ssd1306.SSD1306_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
+            display.fill(0)
+            display.show()
+            return display
+
+    return get_device()
 
 def create_pet(pet_choice):
     if (pet_choice == "koi"):
         koi_image_paths = {"idle0": "./graphics/assets/koi/koi_idle0.png",
                         "idle1": "./graphics/assets/koi/koi_idle1.png"}
 
-        koi = Pet("idle", 0, 3, koi_image_paths)
+        koi = Pet("idle", 3, koi_image_paths)
         koi.setup_images()
         return koi
     elif (pet_choice == "soy"):
         soy_image_paths = {"idle0": "./graphics/assets/soy/soy_idle0.png", 
                         "idle1": "./graphics/assets/soy/soy_idle1.png"}
 
-        soy = Pet("idle", 0, 3, soy_image_paths)
+        soy = Pet("idle", 3, soy_image_paths)
         soy.setup_images()
         return soy
-    
-def draw_frame(device, pet):
-        # Setup canvas
-    image = Image.new("1", (device.width, device.height))
-    
-    # Draw components
-    pet.draw(image, "idle")
-    draw_ui(image, 3)
-
-    # Render canvas
-    device.display(image)
 
 def pet_selection_loop(device):
     pet_choices = ["koi", "soy"]
@@ -74,15 +70,37 @@ def pet_selection_loop(device):
             current_pet = create_pet(pet_choices[pet_index])
             print(f"Selected pet: {pet_choices[pet_index]}")
 
+        image = Image.new("1", (device.width, device.height))
+        
+        # Draw components
+        current_pet.draw(image, "idle")
 
-        draw_frame(device, current_pet)
+        # Render canvas
+        if USE_EMULATOR:
+            device.display(image)
+        else:
+            device.image(image)
+            device.show()
+
         time.sleep(1 / FPS) 
 
 def run_loop(device, pet):
     """Main game loop with the selected pet"""
     
     while True:
-        draw_frame(device, pet)
+        # Setup canvas
+        image = Image.new("1", (device.width, device.height))
+        
+        # Draw components
+        pet.draw(image, "idle")
+        draw_ui(image, 3)
+
+        # Render canvas
+        if USE_EMULATOR:
+            device.display(image)
+        else:
+            device.image(image)
+            device.show()
 
         time.sleep(1 / FPS) 
         

@@ -2,9 +2,9 @@ from PIL import Image
 from PIL import ImageOps
 
 class Pet:
-    def __init__(self, animation_state, hp, hearts, images):
+    def __init__(self, animation_state, hearts, images):
         self.animation_state = animation_state
-        self.hp = hp
+        self.hp = 50
         self.hearts = hearts
         self.images = images
 
