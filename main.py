@@ -16,10 +16,11 @@ def setup():
         from luma.emulator.device import pygame
         return pygame(width=128, height=96)
     else:
-        from luma.core.interface.serial import spi
+        from luma.core.interface.serial import i2c
         from luma.oled.device import ssd1327
 
-        serial = spi(port=0, device=0, gpio_DC=25, gpio_RST=13, gpio_CS=18)
+        # Adjust address and bus as needed
+        serial = i2c(port=1, address=0x3C)  # 0x3C is common for SSD1327
         device = ssd1327(serial_interface=serial, width=128, height=96)
         return device
 
