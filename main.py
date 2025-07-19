@@ -4,7 +4,7 @@ from PIL import ImageDraw
 from graphics.pet import Pet
 from luma.core.render import canvas
 
-USE_EMULATOR = True
+USE_EMULATOR = False
 FPS = 1
 
 def setup():
@@ -16,7 +16,7 @@ def setup():
         from luma.core.interface.serial import spi
         from luma.oled.device import ssd1306
         def get_device():
-            serial = spi(port=0, device=0, gpio_DC=23, gpio_RST=24)
+            serial = spi(port=0, device=0, gpio_DC=22, gpio_RST=13)
             return ssd1306(serial)
         
     device = get_device()
