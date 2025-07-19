@@ -2,8 +2,9 @@ import platform
 import time
 import threading
 
+PI_5 = True
 # GPIO library selection based on platform and availability
-if platform.system() == "Linux" and platform.machine().startswith("arm"):
+if PI_5:
     try:
         # Try gpiod first (Raspberry Pi 5 compatible)
         import gpiod
