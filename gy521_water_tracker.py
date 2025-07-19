@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-KOI - GY521 Water Consumption Tracker for Raspberry Pi (QNX Version)
+KOI - GY521 Water Consumption Tracker for Raspberry Pi (QNX Version with Fixed Calculations)
 
 This code uses a GY521 (MPU6050) gyroscope module to detect when a water bottle
 is tilted for drinking and calculates water consumption based on tilt angle and duration.
@@ -16,12 +16,12 @@ Connections:
 - SDA to GPIO2 (SDA)
 """
 
-import smbus2 as smbus
+import smbus
 import time
 import math
 from datetime import datetime
 
-class GY521WaterTrackerQNX:
+class GY521WaterTrackerFixed:
     def __init__(self):
         # GY521 (MPU6050) I2C address
         self.MPU6050_ADDR = 0x68
@@ -36,9 +36,10 @@ class GY521WaterTrackerQNX:
         self.MIN_DRINKING_TIME = 0.5      # Minimum time to be considered drinking (seconds)
         self.CALIBRATION_SAMPLES = 100    # Number of samples for calibration
         
-        # Water consumption calculation constants
-        self.BASE_FLOW_RATE = 0.5         # Base flow rate (ml per second at 45 degrees)
-        self.ANGLE_MULTIPLIER = 1.5       # Flow rate multiplier per 10 degrees of tilt
+        # Water consumption calculation constants (FIXED VALUES)
+        self.BASE_FLOW_RATE = 0.1         # Base flow rate (ml per second at 45 degrees) - REDUCED
+        self.ANGLE_MULTIPLIER = 0.1       # Flow rate multiplier per 10 degrees of tilt - REDUCED
+        self.MAX_FLOW_RATE = 2.0          # Maximum flow rate (ml per second) - ADDED LIMIT
         
         # Sensor data
         self.accel_x = 0.0
@@ -58,20 +59,20 @@ class GY521WaterTrackerQNX:
         self.total_water_consumed = 0.0
         self.session_water_consumed = 0.0
         
-        # Initialize I2C bus for QNX
+        # Initialize I2C bus for QNX using standard smbus
         try:
-            # QNX uses /dev/i2c1 instead of /dev/i2c-1
-            self.bus = smbus.SMBus('/dev/i2c1')
-            print("I2C bus initialized successfully on QNX")
+            # Try bus 1 first (standard Raspberry Pi I2C)
+            self.bus = smbus.SMBus(1)
+            print("I2C bus initialized successfully using smbus(1)")
         except Exception as e:
-            print(f"Failed to initialize I2C bus: {e}")
+            print(f"Failed to initialize I2C bus with smbus(1): {e}")
             print("Trying alternative I2C bus...")
             try:
-                # Try i2c0 as fallback
-                self.bus = smbus.SMBus('/dev/i2c0')
-                print("I2C bus initialized successfully using i2c0")
+                # Try bus 0 as fallback
+                self.bus = smbus.SMBus(0)
+                print("I2C bus initialized successfully using smbus(0)")
             except Exception as e2:
-                print(f"Failed to initialize I2C bus with i2c0: {e2}")
+                print(f"Failed to initialize I2C bus with smbus(0): {e2}")
                 raise
         
         # Initialize MPU6050
@@ -114,15 +115,33 @@ class GY521WaterTrackerQNX:
         print(f"Calibration offsets - X: {self.calibrated_x:.3f}, Y: {self.calibrated_y:.3f}")
     
     def read_accelerometer(self):
-        """Read accelerometer data from MPU6050"""
+        """Read accelerometer data from MPU6050 using basic smbus methods"""
         try:
-            # Read 6 bytes of accelerometer data
-            data = self.bus.read_i2c_block_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H, 6)
+            # Read accelerometer data byte by byte using basic smbus methods
+            # Read X-axis (high and low bytes)
+            accel_x_high = self.bus.read_byte_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H)
+            accel_x_low = self.bus.read_byte_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H + 1)
+            
+            # Read Y-axis (high and low bytes)
+            accel_y_high = self.bus.read_byte_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H + 2)
+            accel_y_low = self.bus.read_byte_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H + 3)
+            
+            # Read Z-axis (high and low bytes)
+            accel_z_high = self.bus.read_byte_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H + 4)
+            accel_z_low = self.bus.read_byte_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H + 5)
             
             # Convert to 16-bit signed integers
-            accel_x_raw = (data[0] << 8) | data[1]
-            accel_y_raw = (data[2] << 8) | data[3]
-            accel_z_raw = (data[4] << 8) | data[5]
+            accel_x_raw = (accel_x_high << 8) | accel_x_low
+            accel_y_raw = (accel_y_high << 8) | accel_y_low
+            accel_z_raw = (accel_z_high << 8) | accel_z_low
+            
+            # Handle negative values (two's complement)
+            if accel_x_raw > 32767:
+                accel_x_raw -= 65536
+            if accel_y_raw > 32767:
+                accel_y_raw -= 65536
+            if accel_z_raw > 32767:
+                accel_z_raw -= 65536
             
             # Convert to g-force (assuming ±2g range)
             self.accel_x = accel_x_raw / 16384.0
@@ -172,17 +191,20 @@ class GY521WaterTrackerQNX:
                     self.end_drinking_session(current_time)
     
     def calculate_water_consumption(self, tilt_angle, time_elapsed):
-        """Calculate water consumption based on tilt angle and time"""
-        # Calculate flow rate based on tilt angle
-        # Higher tilt angle = faster flow rate
-        flow_rate = self.BASE_FLOW_RATE * (1 + (tilt_angle - self.TILT_THRESHOLD) / 10.0 * self.ANGLE_MULTIPLIER)
+        """Calculate water consumption based on tilt angle and time (FIXED VERSION)"""
+        # Calculate flow rate based on tilt angle with better limits
+        angle_factor = max(0, (tilt_angle - self.TILT_THRESHOLD) / 10.0)
+        flow_rate = self.BASE_FLOW_RATE * (1 + angle_factor * self.ANGLE_MULTIPLIER)
         
-        # Ensure flow rate doesn't go negative
-        if flow_rate < 0:
-            flow_rate = 0
+        # Ensure flow rate is within reasonable bounds
+        flow_rate = max(0, min(flow_rate, self.MAX_FLOW_RATE))
         
         # Calculate water consumed in this time interval
         water_consumed = flow_rate * time_elapsed
+        
+        # Additional safety check - limit to reasonable values
+        if water_consumed > 1.0:  # More than 1ml per update is suspicious
+            water_consumed = 1.0
         
         return water_consumed
     
@@ -234,7 +256,7 @@ class GY521WaterTrackerQNX:
     
     def run(self):
         """Main loop for water tracking"""
-        print("KOI - GY521 Water Consumption Tracker (QNX Version)")
+        print("KOI - GY521 Water Consumption Tracker (QNX Version with Fixed Calculations)")
         print("Initialization complete!")
         print("Tilt the bottle to start tracking water consumption...")
         print()
@@ -269,7 +291,7 @@ class GY521WaterTrackerQNX:
 
 if __name__ == "__main__":
     try:
-        tracker = GY521WaterTrackerQNX()
+        tracker = GY521WaterTrackerFixed()
         tracker.run()
     except Exception as e:
         print(f"Error: {e}")

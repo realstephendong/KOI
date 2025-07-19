@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-GY521 Test Script for Raspberry Pi (QNX Version)
+GY521 Test Script for Raspberry Pi (QNX Version with Basic smbus)
 
 Simple test to verify GY521 (MPU6050) module is working correctly
-and to help with calibration.
+using only basic smbus methods available on QNX.
 """
 
-import smbus2 as smbus
+import smbus
 import time
 import math
 
-class GY521TestQNX:
+class GY521TestBasic:
     def __init__(self):
         # GY521 (MPU6050) I2C address
         self.MPU6050_ADDR = 0x68
@@ -26,20 +26,20 @@ class GY521TestQNX:
         self.tilt_angle_x = 0.0
         self.tilt_angle_y = 0.0
         
-        # Initialize I2C bus for QNX
+        # Initialize I2C bus for QNX using standard smbus
         try:
-            # QNX uses /dev/i2c1 instead of /dev/i2c-1
-            self.bus = smbus.SMBus('/dev/i2c1')
-            print("I2C bus initialized successfully on QNX")
+            # Try bus 1 first (standard Raspberry Pi I2C)
+            self.bus = smbus.SMBus(1)
+            print("I2C bus initialized successfully using smbus(1)")
         except Exception as e:
-            print(f"Failed to initialize I2C bus: {e}")
+            print(f"Failed to initialize I2C bus with smbus(1): {e}")
             print("Trying alternative I2C bus...")
             try:
-                # Try i2c0 as fallback
-                self.bus = smbus.SMBus('/dev/i2c0')
-                print("I2C bus initialized successfully using i2c0")
+                # Try bus 0 as fallback
+                self.bus = smbus.SMBus(0)
+                print("I2C bus initialized successfully using smbus(0)")
             except Exception as e2:
-                print(f"Failed to initialize I2C bus with i2c0: {e2}")
+                print(f"Failed to initialize I2C bus with smbus(0): {e2}")
                 raise
         
         # Initialize MPU6050
@@ -57,15 +57,33 @@ class GY521TestQNX:
             raise
     
     def read_accelerometer(self):
-        """Read accelerometer data from MPU6050"""
+        """Read accelerometer data from MPU6050 using basic smbus methods"""
         try:
-            # Read 6 bytes of accelerometer data
-            data = self.bus.read_i2c_block_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H, 6)
+            # Read accelerometer data byte by byte using basic smbus methods
+            # Read X-axis (high and low bytes)
+            accel_x_high = self.bus.read_byte_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H)
+            accel_x_low = self.bus.read_byte_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H + 1)
+            
+            # Read Y-axis (high and low bytes)
+            accel_y_high = self.bus.read_byte_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H + 2)
+            accel_y_low = self.bus.read_byte_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H + 3)
+            
+            # Read Z-axis (high and low bytes)
+            accel_z_high = self.bus.read_byte_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H + 4)
+            accel_z_low = self.bus.read_byte_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H + 5)
             
             # Convert to 16-bit signed integers
-            accel_x_raw = (data[0] << 8) | data[1]
-            accel_y_raw = (data[2] << 8) | data[3]
-            accel_z_raw = (data[4] << 8) | data[5]
+            accel_x_raw = (accel_x_high << 8) | accel_x_low
+            accel_y_raw = (accel_y_high << 8) | accel_y_low
+            accel_z_raw = (accel_z_high << 8) | accel_z_low
+            
+            # Handle negative values (two's complement)
+            if accel_x_raw > 32767:
+                accel_x_raw -= 65536
+            if accel_y_raw > 32767:
+                accel_y_raw -= 65536
+            if accel_z_raw > 32767:
+                accel_z_raw -= 65536
             
             # Convert to g-force (assuming ±2g range)
             self.accel_x = accel_x_raw / 16384.0
@@ -82,8 +100,8 @@ class GY521TestQNX:
     
     def run_test(self):
         """Run the test loop"""
-        print("GY521 Test Script (QNX Version)")
-        print("===============================")
+        print("GY521 Test Script (QNX Version with Basic smbus)")
+        print("================================================")
         print("MPU6050 initialized!")
         print("Keep the sensor level and still for testing...")
         print()
@@ -107,7 +125,7 @@ class GY521TestQNX:
 
 if __name__ == "__main__":
     try:
-        test = GY521TestQNX()
+        test = GY521TestBasic()
         test.run_test()
     except Exception as e:
         print(f"Error: {e}")
