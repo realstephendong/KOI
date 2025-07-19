@@ -12,27 +12,26 @@ FPS = 1
 def setup():
     # SPI-based display for Raspberry Pi 5 using Adafruit library
     import board
-    import digitalio
+    import displayio
+    import fourwire
     import adafruit_ssd1327
+    import busio
 
     def get_device():
         print("Starting display setup...")
         try:
             print("Initializing SPI...")
-            spi = board.SPI()
-            print("Setting up DC pin (GPIO 25)...")
-            dc_pin = digitalio.DigitalInOut(board.D25)     # GPIO 25
-            print("Setting up reset pin (GPIO 13)...")
-            reset_pin = digitalio.DigitalInOut(board.D13)   # GPIO 13
-            print("Setting up CS pin (GPIO 18)...")
-            # Use GPIO 18 instead of SPI CS pins to avoid conflicts
-            cs_pin = digitalio.DigitalInOut(board.D18)      # GPIO 18 (not SPI)
+            spi = busio.SPI(board.D11, board.D10)  # SCLK, MOSI
+            print("Setting up display bus...")
+            display_bus = fourwire.FourWire(
+                spi, 
+                command=board.D25,    # DC pin
+                chip_select=board.D18, # CS pin
+                reset=board.D13,      # Reset pin
+                baudrate=1000000
+            )
             print("Creating SSD1327 display object...")
-            display = adafruit_ssd1327.SSD1327_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
-            print("Clearing display...")
-            display.fill(0)
-            print("Showing display...")
-            display.show()
+            display = adafruit_ssd1327.SSD1327(display_bus, width=128, height=96)
             print("Display setup complete!")
             return display
         except Exception as e:
@@ -41,19 +40,17 @@ def setup():
             try:
                 # Try GPIO 16
                 print("Initializing SPI for GPIO 16...")
-                spi = board.SPI()
-                print("Setting up DC pin (GPIO 25)...")
-                dc_pin = digitalio.DigitalInOut(board.D25)     # GPIO 25
-                print("Setting up reset pin (GPIO 13)...")
-                reset_pin = digitalio.DigitalInOut(board.D13)   # GPIO 13
-                print("Setting up CS pin (GPIO 16)...")
-                cs_pin = digitalio.DigitalInOut(board.D16)      # GPIO 16
+                spi = busio.SPI(board.D11, board.D10)  # SCLK, MOSI
+                print("Setting up display bus with GPIO 16...")
+                display_bus = fourwire.FourWire(
+                    spi, 
+                    command=board.D25,    # DC pin
+                    chip_select=board.D16, # CS pin
+                    reset=board.D13,      # Reset pin
+                    baudrate=1000000
+                )
                 print("Creating SSD1327 display object...")
-                display = adafruit_ssd1327.SSD1327_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
-                print("Clearing display...")
-                display.fill(0)
-                print("Showing display...")
-                display.show()
+                display = adafruit_ssd1327.SSD1327(display_bus, width=128, height=96)
                 print("Display setup complete with GPIO 16!")
                 return display
             except Exception as e2:
@@ -62,19 +59,17 @@ def setup():
                 try:
                     # Try GPIO 20
                     print("Initializing SPI for GPIO 20...")
-                    spi = board.SPI()
-                    print("Setting up DC pin (GPIO 25)...")
-                    dc_pin = digitalio.DigitalInOut(board.D25)     # GPIO 25
-                    print("Setting up reset pin (GPIO 13)...")
-                    reset_pin = digitalio.DigitalInOut(board.D13)   # GPIO 13
-                    print("Setting up CS pin (GPIO 20)...")
-                    cs_pin = digitalio.DigitalInOut(board.D20)      # GPIO 20
+                    spi = busio.SPI(board.D11, board.D10)  # SCLK, MOSI
+                    print("Setting up display bus with GPIO 20...")
+                    display_bus = fourwire.FourWire(
+                        spi, 
+                        command=board.D25,    # DC pin
+                        chip_select=board.D20, # CS pin
+                        reset=board.D13,      # Reset pin
+                        baudrate=1000000
+                    )
                     print("Creating SSD1327 display object...")
-                    display = adafruit_ssd1327.SSD1327_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
-                    print("Clearing display...")
-                    display.fill(0)
-                    print("Showing display...")
-                    display.show()
+                    display = adafruit_ssd1327.SSD1327(display_bus, width=128, height=96)
                     print("Display setup complete with GPIO 20!")
                     return display
                 except Exception as e3:
@@ -85,19 +80,50 @@ def setup():
     print("Calling get_device()...")
     return get_device()
 
+def convert_pil_to_displayio(image, device):
+    """Convert PIL image to displayio format for Adafruit library"""
+    import displayio
+    
+    # Create a displayio group and add the image
+    group = displayio.Group()
+    bitmap = displayio.Bitmap(image.width, image.height, 2)
+    
+    # Convert PIL image to bitmap
+    for y in range(image.height):
+        for x in range(image.width):
+            pixel = image.getpixel((x, y))
+            bitmap[x, y] = 0 if pixel == 0 else 1
+    
+    tile_grid = displayio.TileGrid(bitmap, pixel_shader=displayio.ColorConverter())
+    group.append(tile_grid)
+    
+    return group
+
 def main():
-    display = setup()
-    image = Image.new("1", (128, 96), 0)
-    draw = ImageDraw.Draw(image)
-    rect_width, rect_height = 40, 20
-    rect_x0 = (128 - rect_width) // 2
-    rect_y0 = (96 - rect_height) // 2
-    rect_x1 = rect_x0 + rect_width
-    rect_y1 = rect_y0 + rect_height
-    draw.rectangle([rect_x0, rect_y0, rect_x1, rect_y1], fill=1)
-    display.image(image)
-    display.show()
-    time.sleep(2)
+    try:
+        display = setup()
+        print("Display setup successful!")
+        
+        image = Image.new("1", (128, 96), 0)
+        draw = ImageDraw.Draw(image)
+        rect_width, rect_height = 40, 20
+        rect_x0 = (128 - rect_width) // 2
+        rect_y0 = (96 - rect_height) // 2
+        rect_x1 = rect_x0 + rect_width
+        rect_y1 = rect_y0 + rect_height
+        draw.rectangle([rect_x0, rect_y0, rect_x1, rect_y1], fill=1)
+        
+        print("Drawing rectangle...")
+        # Convert PIL image to displayio format
+        group = convert_pil_to_displayio(image, display)
+        display.root_group = group
+        print("Rectangle drawn and displayed!")
+        time.sleep(2)
+        
+    except Exception as e:
+        print(f"Error in main: {e}")
+        import traceback
+        traceback.print_exc()
 
 if __name__ == "__main__":
     main()
