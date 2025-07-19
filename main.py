@@ -21,7 +21,7 @@ def setup():
 
         # Adjust address and bus as needed
         serial = i2c(port=1, address=0x3C)  # 0x3C is common for SSD1327
-        device = ssd1327(serial_interface=serial, width=128, height=96)
+        device = ssd1327(serial_interface=serial, width=128, height=128)
         return device
 
 def create_pet(pet_choice):
