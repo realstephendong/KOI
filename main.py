@@ -38,6 +38,8 @@ def setup():
                 cs_pin = digitalio.DigitalInOut(board.D18)      # GPIO 18 (not SPI)
                 print("Creating SSD1306 display object...")
                 display = adafruit_ssd1306.SSD1306_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
+                print("Setting contrast to maximum...")
+                display.contrast(255)  # Set to maximum brightness
                 print("Clearing display...")
                 display.fill(0)
                 print("Showing display...")
@@ -154,15 +156,23 @@ def run_loop(device, pet):
     
     while True:
         frame_count += 1
-        print(f"Frame {frame_count}: Drawing pet and UI...")
+        print(f"Frame {frame_count}: Drawing test pattern...")
         
         # Setup canvas
         image = Image.new("1", (device.width, device.height))
         
-        # Draw components
-        pet.draw(image, "idle")
-        draw_ui(image, 3)
-
+        # Draw a simple test pattern instead of complex graphics
+        draw = ImageDraw.Draw(image)
+        
+        # Draw a simple rectangle to test if display works
+        draw.rectangle([10, 10, 118, 86], outline=1, fill=0)
+        draw.text((20, 20), "TEST", fill=1)
+        draw.text((20, 40), f"Frame: {frame_count}", fill=1)
+        
+        # Draw some pixels to make sure display is working
+        for i in range(0, 128, 4):
+            image.putpixel((i, 60), 1)
+        
         # Render canvas
         if USE_EMULATOR:
             device.display(image)
@@ -171,7 +181,7 @@ def run_loop(device, pet):
             device.show()
 
         print(f"Frame {frame_count}: Display updated")
-        time.sleep(1 / FPS) 
+        time.sleep(1 / FPS)
         
 
 def main():
