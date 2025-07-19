@@ -28,7 +28,7 @@ def setup():
             dc_pin = digitalio.DigitalInOut(board.D25)    
             reset_pin = digitalio.DigitalInOut(board.D13) 
             cs_pin = digitalio.DigitalInOut(board.D18)    
-            display = adafruit_ssd1327.SSD1327_SPI(
+            display = adafruit_ssd1327.SSD1327(
                 128, 96, spi, dc_pin, reset_pin, cs_pin
             )
             display.fill(0)
