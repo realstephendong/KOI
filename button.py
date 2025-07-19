@@ -50,19 +50,19 @@ class Button:
         GPIO.remove_event_detect(self.port)
         GPIO.cleanup()
 
-# Example usage
-if __name__ == "__main__":
-    # Create a button on pin 18
-    button = Button(18)
+# # Example usage
+# if __name__ == "__main__":
+#     # Create a button on pin 18
+#     button = Button(18)
     
-    try:
-        print("Button test started. Press the button or wait for simulated presses...")
-        while True:
-            if button.is_pressed():
-                print("Button press detected!")
-            time.sleep(0.1)
+#     try:
+#         print("Button test started. Press the button or wait for simulated presses...")
+#         while True:
+#             if button.is_pressed():
+#                 print("Button press detected!")
+#             time.sleep(0.1)
             
-    except KeyboardInterrupt:
-        print("\nExiting...")
-    finally:
-        button.cleanup()
+#     except KeyboardInterrupt:
+#         print("\nExiting...")
+#     finally:
+#         button.cleanup()

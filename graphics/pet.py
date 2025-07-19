@@ -13,10 +13,7 @@ class Pet:
     def setup_images(self):
         idle0 = Image.open(self.images["idle0"]).convert("1")
         idle1 = Image.open(self.images["idle1"]).convert("1")
-
-        # sad0 = Image.open("../assets/soy/soy0.png").convert("1")
-        # sad1 = Image.open("../assets/soy/soy0.png").convert("1")
-        # death = Image.open("../assets/soy/soy0.png").convert("1")
+        # TODO: Add sad and death
 
         self.images = {
             "idle": [idle0, idle1]
