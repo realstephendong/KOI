@@ -9,8 +9,8 @@ from luma.core.render import canvas
 USE_EMULATOR = True
 FPS = 1
 
-select_button = Button(17)
-confirm_button = Button(27)
+yellow_button = Button(17)
+blue_button = Button(27)
 
 def setup():
     if USE_EMULATOR:
@@ -55,6 +55,9 @@ def draw_frame(device, pet):
     # Render canvas
     device.display(image)
 
+def increase_friendship(device):
+    pass
+
 def pet_selection_loop(device):
     pet_choices = ["koi", "soy"]
     pet_index = 0
@@ -62,14 +65,14 @@ def pet_selection_loop(device):
         
     while True:
         # Handle button presses
-        if confirm_button.is_pressed():
+        if blue_button.is_pressed():
             global state, pet_choice
             state = "pet"
             pet_choice = pet_choices[pet_index]
             print(f"Confirmed pet choice: {pet_choice}")
             return current_pet
             
-        if select_button.is_pressed():
+        if yellow_button.is_pressed():
             pet_index = (pet_index + 1) % len(pet_choices)
             current_pet = create_pet(pet_choices[pet_index])
             print(f"Selected pet: {pet_choices[pet_index]}")
@@ -82,14 +85,17 @@ def run_loop(device, pet):
     """Main game loop with the selected pet"""
     
     while True:
-        draw_frame(device, pet)
+        if yellow_button.is_pressed():
+            increase_friendship()
+        else:
+            draw_frame(device, pet)
 
         time.sleep(1 / FPS) 
         
 
 def main():
     pet_choice = "soy"
-    game_state = "pet"
+    game_state = "selection"
     
     device = setup()
     
