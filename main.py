@@ -21,14 +21,16 @@ def setup():
         # SPI-based display for Raspberry Pi 5 using Adafruit library
         import board
         import digitalio
-        import adafruit_ssd1306
+        import adafruit_ssd1327
 
         def get_device():
             spi = board.SPI()
-            dc_pin = digitalio.DigitalInOut(board.D22)     # GPIO 22
-            reset_pin = digitalio.DigitalInOut(board.D13)   # GPIO 13
-            cs_pin = digitalio.DigitalInOut(board.CE0)      # GPIO 8 (CE0)
-            display = adafruit_ssd1306.SSD1306_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
+            dc_pin = digitalio.DigitalInOut(board.D25)    
+            reset_pin = digitalio.DigitalInOut(board.D13) 
+            cs_pin = digitalio.DigitalInOut(board.D18)    
+            display = adafruit_ssd1327.SSD1327_SPI(
+                128, 96, spi, dc_pin, reset_pin, cs_pin
+            )
             display.fill(0)
             display.show()
             return display
@@ -110,7 +112,7 @@ def run_loop(device, pet):
 
 def main():
     pet_choice = "soy"
-    game_state = "selection"
+    game_state = "pet"
     
     device = setup()
     
