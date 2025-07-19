@@ -27,15 +27,18 @@ def setup():
         def get_device():
             print("Starting display setup...")
             try:
-                print("Initializing SPI...")
+                print("Initializing SPI with explicit pins...")
+                # Use explicit SPI configuration
                 spi = board.SPI()
+                print("SPI initialized successfully")
+                
                 print("Setting up DC pin (GPIO 25)...")
                 dc_pin = digitalio.DigitalInOut(board.D25)     # GPIO 25
                 print("Setting up reset pin (GPIO 13)...")
                 reset_pin = digitalio.DigitalInOut(board.D13)   # GPIO 13
                 print("Setting up CS pin (GPIO 18)...")
-                # Use GPIO 18 instead of SPI CS pins to avoid conflicts
                 cs_pin = digitalio.DigitalInOut(board.D18)      # GPIO 18 (not SPI)
+                
                 print("Creating SSD1306 display object...")
                 display = adafruit_ssd1306.SSD1306_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
                 print("Setting contrast to maximum...")
@@ -153,6 +156,19 @@ def run_loop(device, pet):
     
     print("Starting main game loop...")
     frame_count = 0
+    
+    # First, let's do a simple power-on test
+    print("Testing display with full white screen...")
+    test_image = Image.new("1", (device.width, device.height), 1)  # All white
+    device.image(test_image)
+    device.show()
+    time.sleep(2)  # Show white for 2 seconds
+    
+    print("Testing display with full black screen...")
+    test_image = Image.new("1", (device.width, device.height), 0)  # All black
+    device.image(test_image)
+    device.show()
+    time.sleep(1)  # Show black for 1 second
     
     while True:
         frame_count += 1
