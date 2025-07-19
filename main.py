@@ -22,14 +22,15 @@ def setup():
         # SPI-based display for Raspberry Pi 5 using Adafruit library
         import board
         import digitalio
-        import adafruit_ssd1306
+        import adafruit_ssd1327
 
         def get_device():
             print("Starting display setup...")
             try:
-                print("Initializing SPI with explicit pins...")
-                # Use explicit SPI configuration
-                spi = board.SPI()
+                print("Initializing SPI with hardware interface...")
+                # Use hardware SPI with explicit pin numbers
+                import busio
+                spi = busio.SPI(clock=board.D11, MOSI=board.D10, MISO=board.D9)
                 print("SPI initialized successfully")
                 
                 print("Setting up DC pin (GPIO 25)...")
@@ -39,8 +40,9 @@ def setup():
                 print("Setting up CS pin (GPIO 18)...")
                 cs_pin = digitalio.DigitalInOut(board.D18)      # GPIO 18 (not SPI)
                 
-                print("Creating SSD1306 display object...")
-                display = adafruit_ssd1306.SSD1306_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
+                print("Creating SSD1327 display object...")
+                # SSD1327 is 128x128, not 128x96
+                display = adafruit_ssd1327.SSD1327_SPI(128, 128, spi, dc_pin, reset_pin, cs_pin)
                 print("Setting contrast to maximum...")
                 display.contrast(255)  # Set to maximum brightness
                 print("Clearing display...")
@@ -159,13 +161,13 @@ def run_loop(device, pet):
     
     # First, let's do a simple power-on test
     print("Testing display with full white screen...")
-    test_image = Image.new("1", (device.width, device.height), 1)  # All white
+    test_image = Image.new("1", (128, 128), 1)  # All white - SSD1327 is 128x128
     device.image(test_image)
     device.show()
     time.sleep(2)  # Show white for 2 seconds
     
     print("Testing display with full black screen...")
-    test_image = Image.new("1", (device.width, device.height), 0)  # All black
+    test_image = Image.new("1", (128, 128), 0)  # All black - SSD1327 is 128x128
     device.image(test_image)
     device.show()
     time.sleep(1)  # Show black for 1 second
@@ -174,14 +176,14 @@ def run_loop(device, pet):
         frame_count += 1
         print(f"Frame {frame_count}: Drawing test pattern...")
         
-        # Setup canvas
-        image = Image.new("1", (device.width, device.height))
+        # Setup canvas - SSD1327 is 128x128
+        image = Image.new("1", (128, 128))
         
         # Draw a simple test pattern instead of complex graphics
         draw = ImageDraw.Draw(image)
         
         # Draw a simple rectangle to test if display works
-        draw.rectangle([10, 10, 118, 86], outline=1, fill=0)
+        draw.rectangle([10, 10, 118, 118], outline=1, fill=0)
         draw.text((20, 20), "TEST", fill=1)
         draw.text((20, 40), f"Frame: {frame_count}", fill=1)
         
