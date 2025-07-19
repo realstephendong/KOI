@@ -20,19 +20,23 @@ def setup():
     else:
         # SPI-based display for Raspberry Pi 5 using Adafruit library
         import board
-        import digitalio
+        import displayio
+        import fourwire
         import adafruit_ssd1327
+        import busio
 
         def get_device():
-            spi = board.SPI()
-            dc_pin = digitalio.DigitalInOut(board.D25)    
-            reset_pin = digitalio.DigitalInOut(board.D13) 
-            cs_pin = digitalio.DigitalInOut(board.D18)    
-            display = adafruit_ssd1327.SSD1327(
-                128, 96, spi, dc_pin, reset_pin, cs_pin
-            )
-            display.fill(0)
-            display.show()
+            displayio.release_displays()
+            
+            # Use Raspberry Pi SPI pins
+            spi = busio.SPI(board.D11, board.D10)  # SCLK, MOSI
+            tft_cs = board.D18
+            tft_dc = board.D25
+            tft_reset = board.D13
+            
+            display_bus = fourwire.FourWire(spi, command=tft_dc, chip_select=tft_cs, reset=tft_reset, baudrate=1000000)
+            time.sleep(1)
+            display = adafruit_ssd1327.SSD1327(display_bus, width=128, height=96)
             return display
 
     return get_device()
@@ -55,6 +59,25 @@ def create_pet(pet_choice):
 
 def increase_friendship(device):
     pass
+
+def convert_pil_to_displayio(image, device):
+    """Convert PIL image to displayio format for Adafruit library"""
+    import displayio
+    
+    # Create a displayio group and add the image
+    group = displayio.Group()
+    bitmap = displayio.Bitmap(image.width, image.height, 2)
+    
+    # Convert PIL image to bitmap
+    for y in range(image.height):
+        for x in range(image.width):
+            pixel = image.getpixel((x, y))
+            bitmap[x, y] = 0 if pixel == 0 else 1
+    
+    tile_grid = displayio.TileGrid(bitmap, pixel_shader=displayio.ColorConverter())
+    group.append(tile_grid)
+    
+    return group
 
 def pet_selection_loop(device):
     pet_choices = ["koi", "soy"]
@@ -84,8 +107,8 @@ def pet_selection_loop(device):
         if USE_EMULATOR:
             device.display(image)
         else:
-            device.image(image)
-            device.show()
+            group = convert_pil_to_displayio(image, device)
+            device.show(group)
 
         time.sleep(1 / FPS) 
 
@@ -104,8 +127,8 @@ def run_loop(device, pet):
         if USE_EMULATOR:
             device.display(image)
         else:
-            device.image(image)
-            device.show()
+            group = convert_pil_to_displayio(image, device)
+            device.show(group)
 
         time.sleep(1 / FPS) 
         
