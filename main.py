@@ -149,7 +149,13 @@ def pet_selection_loop(device):
 def run_loop(device, pet):
     """Main game loop with the selected pet"""
     
+    print("Starting main game loop...")
+    frame_count = 0
+    
     while True:
+        frame_count += 1
+        print(f"Frame {frame_count}: Drawing pet and UI...")
+        
         # Setup canvas
         image = Image.new("1", (device.width, device.height))
         
@@ -164,6 +170,7 @@ def run_loop(device, pet):
             device.image(image)
             device.show()
 
+        print(f"Frame {frame_count}: Display updated")
         time.sleep(1 / FPS) 
         
 
