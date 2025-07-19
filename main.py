@@ -29,40 +29,41 @@ def setup():
                 spi = board.SPI()
                 dc_pin = digitalio.DigitalInOut(board.D25)     # GPIO 25
                 reset_pin = digitalio.DigitalInOut(board.D13)   # GPIO 13
-                # Use GPIO pin number directly instead of board constant
-                cs_pin = digitalio.DigitalInOut(board.D8)       # GPIO 8 (same as CE0)
+                # Use GPIO 18 instead of SPI CS pins to avoid conflicts
+                cs_pin = digitalio.DigitalInOut(board.D18)      # GPIO 18 (not SPI)
                 display = adafruit_ssd1306.SSD1306_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
                 display.fill(0)
                 display.show()
                 return display
             except Exception as e:
-                print(f"Error setting up display with GPIO 8: {e}")
-                print("Trying CE1 (GPIO 7)...")
+                print(f"Error setting up display with GPIO 18: {e}")
+                print("Trying GPIO 16...")
                 try:
-                    # Try CE1 instead
+                    # Try GPIO 16
                     spi = board.SPI()
                     dc_pin = digitalio.DigitalInOut(board.D25)     # GPIO 25
                     reset_pin = digitalio.DigitalInOut(board.D13)   # GPIO 13
-                    cs_pin = digitalio.DigitalInOut(board.CE1)      # GPIO 7 (CE1)
+                    cs_pin = digitalio.DigitalInOut(board.D16)      # GPIO 16
                     display = adafruit_ssd1306.SSD1306_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
                     display.fill(0)
                     display.show()
                     return display
                 except Exception as e2:
-                    print(f"Error with CE1: {e2}")
-                    print("Trying alternative pin configuration...")
+                    print(f"Error with GPIO 16: {e2}")
+                    print("Trying GPIO 20...")
                     try:
-                        # Alternative configuration with different pins
+                        # Try GPIO 20
                         spi = board.SPI()
-                        dc_pin = digitalio.DigitalInOut(board.D24)     # GPIO 24
-                        reset_pin = digitalio.DigitalInOut(board.D23)   # GPIO 23
-                        cs_pin = digitalio.DigitalInOut(board.D22)      # GPIO 22
+                        dc_pin = digitalio.DigitalInOut(board.D25)     # GPIO 25
+                        reset_pin = digitalio.DigitalInOut(board.D13)   # GPIO 13
+                        cs_pin = digitalio.DigitalInOut(board.D20)      # GPIO 20
                         display = adafruit_ssd1306.SSD1306_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
                         display.fill(0)
                         display.show()
                         return display
                     except Exception as e3:
-                        print(f"Error with alternative configuration: {e3}")
+                        print(f"Error with GPIO 20: {e3}")
+                        print("All GPIO attempts failed. Please check your wiring.")
                         raise
 
     return get_device()
