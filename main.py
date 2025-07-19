@@ -108,7 +108,8 @@ def pet_selection_loop(device):
             device.display(image)
         else:
             group = convert_pil_to_displayio(image, device)
-            device.show(group)
+            device.root_group = group
+            device.refresh()
 
         time.sleep(1 / FPS) 
 
@@ -128,7 +129,8 @@ def run_loop(device, pet):
             device.display(image)
         else:
             group = convert_pil_to_displayio(image, device)
-            device.show(group)
+            device.root_group = group
+            device.refresh()
 
         time.sleep(1 / FPS) 
         
