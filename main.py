@@ -100,26 +100,31 @@ def convert_pil_to_displayio(image, device):
     return group
 
 def main():
+    
     try:
         display = setup()
         print("Display setup successful!")
         
-        image = Image.new("1", (128, 96), 0)
-        draw = ImageDraw.Draw(image)
-        rect_width, rect_height = 40, 20
-        rect_x0 = (128 - rect_width) // 2
-        rect_y0 = (96 - rect_height) // 2
-        rect_x1 = rect_x0 + rect_width
-        rect_y1 = rect_y0 + rect_height
-        draw.rectangle([rect_x0, rect_y0, rect_x1, rect_y1], fill=1)
-        
-        print("Drawing rectangle...")
-        # Convert PIL image to displayio format
-        group = convert_pil_to_displayio(image, display)
-        display.root_group = group
-        print("Rectangle drawn and displayed!")
-        time.sleep(2)
-        
+        while True:
+            image = Image.new("1", (128, 96), 0)
+            draw = ImageDraw.Draw(image)
+            rect_width, rect_height = 40, 20
+            rect_x0 = (128 - rect_width) // 2
+            rect_y0 = (96 - rect_height) // 2
+            rect_x1 = rect_x0 + rect_width
+            rect_y1 = rect_y0 + rect_height
+            draw.rectangle([rect_x0, rect_y0, rect_x1, rect_y1], fill=1)
+            
+            print("Drawing rectangle...")
+            # Convert PIL image to displayio format
+            group = convert_pil_to_displayio(image, display)
+            display.root_group = group
+            print("Rectangle drawn and displayed!")
+            display.show()
+            display.refresh()
+            
+            time.sleep(2)
+
     except Exception as e:
         print(f"Error in main: {e}")
         import traceback
