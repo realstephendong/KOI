@@ -10,8 +10,8 @@ USE_EMULATOR = False
 FPS = 1
 
 # Use GPIO 17 (Select) and GPIO 27 (Confirm) for buttons, per GPIO_SETUP.md
-yellow_button = Button(17)
-blue_button = Button(27)
+# yellow_button = Button(17)
+# blue_button = Button(27)
 
 def setup():
     if USE_EMULATOR:
@@ -26,7 +26,7 @@ def setup():
 
         def get_device():
             spi = board.SPI()
-            dc_pin = digitalio.DigitalInOut(board.D22)     # GPIO 22
+            dc_pin = digitalio.DigitalInOut(board.D25)     # GPIO 25
             reset_pin = digitalio.DigitalInOut(board.D13)   # GPIO 13
             cs_pin = digitalio.DigitalInOut(board.CE0)      # GPIO 8 (CE0)
             display = adafruit_ssd1306.SSD1306_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
@@ -61,18 +61,18 @@ def pet_selection_loop(device):
     current_pet = create_pet(pet_choices[pet_index])
         
     while True:
-        # Handle button presses
-        if blue_button.is_pressed():
-            global state, pet_choice
-            state = "pet"
-            pet_choice = pet_choices[pet_index]
-            print(f"Confirmed pet choice: {pet_choice}")
-            return current_pet
+        # # Handle button presses
+        # if blue_button.is_pressed():
+        #     global state, pet_choice
+        #     state = "pet"
+        #     pet_choice = pet_choices[pet_index]
+        #     print(f"Confirmed pet choice: {pet_choice}")
+        #     return current_pet
             
-        if yellow_button.is_pressed():
-            pet_index = (pet_index + 1) % len(pet_choices)
-            current_pet = create_pet(pet_choices[pet_index])
-            print(f"Selected pet: {pet_choices[pet_index]}")
+        # if yellow_button.is_pressed():
+        #     pet_index = (pet_index + 1) % len(pet_choices)
+        #     current_pet = create_pet(pet_choices[pet_index])
+        #     print(f"Selected pet: {pet_choices[pet_index]}")
 
         image = Image.new("1", (device.width, device.height))
         
@@ -111,7 +111,7 @@ def run_loop(device, pet):
 
 def main():
     pet_choice = "soy"
-    game_state = "selection"
+    game_state = "pet"
     
     device = setup()
     
