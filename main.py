@@ -120,9 +120,8 @@ def main():
             group = convert_pil_to_displayio(image, display)
             display.root_group = group
             print("Rectangle drawn and displayed!")
-            display.show()
             display.refresh()
-            
+
             time.sleep(2)
 
     except Exception as e:
