@@ -23,26 +23,36 @@ def setup():
         import board
         import digitalio
         import adafruit_ssd1327
+        import displayio
+        import fourwire
 
         def get_device():
             print("Starting display setup...")
             try:
+                print("Releasing any existing displays...")
+                displayio.release_displays()
+                
                 print("Initializing SPI with hardware interface...")
                 # Use hardware SPI with explicit pin numbers
                 import busio
                 spi = busio.SPI(clock=board.D11, MOSI=board.D10, MISO=board.D9)
                 print("SPI initialized successfully")
                 
-                print("Setting up DC pin (GPIO 25)...")
-                dc_pin = digitalio.DigitalInOut(board.D25)     # GPIO 25
-                print("Setting up reset pin (GPIO 13)...")
-                reset_pin = digitalio.DigitalInOut(board.D13)   # GPIO 13
-                print("Setting up CS pin (GPIO 18)...")
-                cs_pin = digitalio.DigitalInOut(board.D18)      # GPIO 18 (not SPI)
+                print("Setting up display bus...")
+                # Use FourWire bus as per documentation
+                display_bus = fourwire.FourWire(
+                    spi, 
+                    command=board.D25,      # DC pin
+                    chip_select=board.D18,  # CS pin  
+                    reset=board.D13,        # Reset pin
+                    baudrate=1000000
+                )
+                print("Display bus created successfully")
                 
                 print("Creating SSD1327 display object...")
-                # SSD1327 initialization
-                display = adafruit_ssd1327.SSD1327(spi, dc_pin, reset_pin, cs_pin, width=128, height=96)
+                display = adafruit_ssd1327.SSD1327(display_bus, width=128, height=96)
+                print("Display object created successfully")
+                
                 print("Setting contrast to maximum...")
                 display.contrast(255)  # Set to maximum brightness
                 print("Clearing display...")
@@ -57,15 +67,17 @@ def setup():
                 try:
                     # Try GPIO 16
                     print("Initializing SPI for GPIO 16...")
-                    spi = board.SPI()
-                    print("Setting up DC pin (GPIO 25)...")
-                    dc_pin = digitalio.DigitalInOut(board.D25)     # GPIO 25
-                    print("Setting up reset pin (GPIO 13)...")
-                    reset_pin = digitalio.DigitalInOut(board.D13)   # GPIO 13
-                    print("Setting up CS pin (GPIO 16)...")
-                    cs_pin = digitalio.DigitalInOut(board.D16)      # GPIO 16
+                    spi = busio.SPI(clock=board.D11, MOSI=board.D10, MISO=board.D9)
+                    print("Setting up display bus with GPIO 16...")
+                    display_bus = fourwire.FourWire(
+                        spi, 
+                        command=board.D25,      # DC pin
+                        chip_select=board.D16,  # CS pin (GPIO 16)
+                        reset=board.D13,        # Reset pin
+                        baudrate=1000000
+                    )
                     print("Creating SSD1327 display object...")
-                    display = adafruit_ssd1327.SSD1327(spi, dc_pin, reset_pin, cs_pin, width=128, height=96)
+                    display = adafruit_ssd1327.SSD1327(display_bus, width=128, height=96)
                     print("Clearing display...")
                     display.fill(0)
                     print("Showing display...")
@@ -78,15 +90,17 @@ def setup():
                     try:
                         # Try GPIO 20
                         print("Initializing SPI for GPIO 20...")
-                        spi = board.SPI()
-                        print("Setting up DC pin (GPIO 25)...")
-                        dc_pin = digitalio.DigitalInOut(board.D25)     # GPIO 25
-                        print("Setting up reset pin (GPIO 13)...")
-                        reset_pin = digitalio.DigitalInOut(board.D13)   # GPIO 13
-                        print("Setting up CS pin (GPIO 20)...")
-                        cs_pin = digitalio.DigitalInOut(board.D20)      # GPIO 20
+                        spi = busio.SPI(clock=board.D11, MOSI=board.D10, MISO=board.D9)
+                        print("Setting up display bus with GPIO 20...")
+                        display_bus = fourwire.FourWire(
+                            spi, 
+                            command=board.D25,      # DC pin
+                            chip_select=board.D20,  # CS pin (GPIO 20)
+                            reset=board.D13,        # Reset pin
+                            baudrate=1000000
+                        )
                         print("Creating SSD1327 display object...")
-                        display = adafruit_ssd1327.SSD1327(spi, dc_pin, reset_pin, cs_pin, width=128, height=96)
+                        display = adafruit_ssd1327.SSD1327(display_bus, width=128, height=96)
                         print("Clearing display...")
                         display.fill(0)
                         print("Showing display...")
