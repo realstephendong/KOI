@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-KOI - GY521 Water Consumption Tracker for Raspberry Pi (QNX Version with Fixed Calculations)
+KOI - GY521 Water Consumption Tracker for Raspberry Pi (QNX Version with Robust Detection)
 
 This code uses a GY521 (MPU6050) gyroscope module to detect when a water bottle
 is tilted for drinking and calculates water consumption based on tilt angle and duration.
@@ -31,15 +31,16 @@ class GY521WaterTrackerFixed:
         self.PWR_MGMT_1 = 0x6B
         
         # Calibration and threshold values
-        self.TILT_THRESHOLD = 15.0        # Minimum tilt angle to trigger drinking detection (degrees)
-        self.DRINKING_TIMEOUT = 5.0       # Maximum time for a single drinking session (seconds)
-        self.MIN_DRINKING_TIME = 0.5      # Minimum time to be considered drinking (seconds)
-        self.CALIBRATION_SAMPLES = 100    # Number of samples for calibration
+        self.TILT_THRESHOLD = 25.0        # Increased threshold to reduce false positives
+        self.DRINKING_TIMEOUT = 2.0       # Reduced timeout for quicker session end (seconds)
+        self.MIN_DRINKING_TIME = 0.3      # Reduced minimum time for quick sips (seconds)
+        self.CALIBRATION_SAMPLES = 200    # Increased samples for better calibration
+        self.NOISE_THRESHOLD = 5.0        # Minimum change to consider real movement
         
-        # Water consumption calculation constants (FIXED VALUES)
-        self.BASE_FLOW_RATE = 0.1         # Base flow rate (ml per second at 45 degrees) - REDUCED
-        self.ANGLE_MULTIPLIER = 0.1       # Flow rate multiplier per 10 degrees of tilt - REDUCED
-        self.MAX_FLOW_RATE = 2.0          # Maximum flow rate (ml per second) - ADDED LIMIT
+        # Water consumption calculation constants (IMPROVED VALUES)
+        self.BASE_FLOW_RATE = 0.5         # Base flow rate (ml per second at 45 degrees)
+        self.ANGLE_MULTIPLIER = 0.3       # Flow rate multiplier per 10 degrees of tilt
+        self.MAX_FLOW_RATE = 8.0          # Maximum flow rate (ml per second)
         
         # Sensor data
         self.accel_x = 0.0
@@ -51,6 +52,11 @@ class GY521WaterTrackerFixed:
         # Calibration offsets
         self.calibrated_x = 0.0
         self.calibrated_y = 0.0
+        
+        # Movement detection
+        self.last_tilt_y = 0.0
+        self.stable_readings = 0
+        self.required_stable_readings = 5   # Reduced to 5 stable readings (0.25 seconds) for quicker detection
         
         # Drinking session variables
         self.is_drinking = False
@@ -97,22 +103,36 @@ class GY521WaterTrackerFixed:
     def calibrate_sensor(self):
         """Calibrate the sensor by taking multiple readings when level"""
         print("Calibrating sensor...")
-        print("Keep the bottle level and still...")
+        print("Keep the bottle level and still for 4 seconds...")
         
         sum_x = 0.0
         sum_y = 0.0
+        readings = []
         
         for i in range(self.CALIBRATION_SAMPLES):
             self.read_accelerometer()
+            readings.append((self.accel_x, self.accel_y))
             sum_x += self.accel_x
             sum_y += self.accel_y
-            time.sleep(0.01)
+            time.sleep(0.02)  # 50Hz sampling
         
+        # Calculate mean
         self.calibrated_x = sum_x / self.CALIBRATION_SAMPLES
         self.calibrated_y = sum_y / self.CALIBRATION_SAMPLES
         
+        # Calculate standard deviation to understand noise level
+        var_x = sum((x - self.calibrated_x) ** 2 for x, _ in readings) / self.CALIBRATION_SAMPLES
+        var_y = sum((y - self.calibrated_y) ** 2 for _, y in readings) / self.CALIBRATION_SAMPLES
+        std_x = math.sqrt(var_x)
+        std_y = math.sqrt(var_y)
+        
         print("Calibration complete!")
         print(f"Calibration offsets - X: {self.calibrated_x:.3f}, Y: {self.calibrated_y:.3f}")
+        print(f"Noise levels - X: ±{std_x:.3f}g, Y: ±{std_y:.3f}g")
+        
+        # Adjust noise threshold based on actual sensor noise
+        self.NOISE_THRESHOLD = max(5.0, std_y * 100)  # Convert to degrees, minimum 5°
+        print(f"Adjusted noise threshold: {self.NOISE_THRESHOLD:.1f}°")
     
     def read_accelerometer(self):
         """Read accelerometer data from MPU6050 using basic smbus methods"""
@@ -162,37 +182,60 @@ class GY521WaterTrackerFixed:
         self.tilt_angle_y = math.degrees(math.atan2(-self.accel_x, math.sqrt(self.accel_y**2 + self.accel_z**2)))
     
     def detect_drinking(self, current_time):
-        """Detect drinking based on tilt angle and duration"""
-        # Calculate the magnitude of tilt (combined X and Y tilt)
-        tilt_magnitude = math.sqrt(self.tilt_angle_x**2 + self.tilt_angle_y**2)
+        """Detect drinking based on tilt angle and duration with noise filtering"""
+        # Only use Y-axis tilt for drinking detection (forward/backward tilt)
+        # X-axis rotation (left/right) doesn't cause water to pour
+        tilt_angle = abs(self.tilt_angle_y)
         
-        if tilt_magnitude > self.TILT_THRESHOLD:
+        # Check for significant movement (not just noise)
+        tilt_change = abs(tilt_angle - self.last_tilt_y)
+        
+        if tilt_change > self.NOISE_THRESHOLD:
+            # Significant movement detected
+            self.stable_readings = 0
+        else:
+            # Movement is stable
+            self.stable_readings += 1
+        
+        # Only trigger if we have stable readings above threshold
+        if tilt_angle > self.TILT_THRESHOLD and self.stable_readings >= self.required_stable_readings:
+            # DEBUG: Print threshold comparison
+            if not self.is_drinking:  # Only print when first crossing threshold
+                print(f"DEBUG: Y-axis tilt {tilt_angle:.1f}° vs threshold {self.TILT_THRESHOLD}° (stable: {self.stable_readings})")
+            
             # Bottle is tilted enough to be drinking
             if not self.is_drinking:
                 # Start a new drinking session
                 self.is_drinking = True
                 self.drinking_start_time = current_time
                 self.session_water_consumed = 0.0
-                print("Drinking detected! Starting session...")
+                print(f"Drinking detected! Starting session... (Y-tilt: {tilt_angle:.1f}°)")
             
             # Calculate water consumption for this time interval
             time_elapsed = current_time - self.last_drinking_time
             if time_elapsed > 0:
-                water_consumed = self.calculate_water_consumption(tilt_magnitude, time_elapsed)
+                water_consumed = self.calculate_water_consumption(tilt_angle, time_elapsed)
                 self.session_water_consumed += water_consumed
                 self.total_water_consumed += water_consumed
             
             self.last_drinking_time = current_time
+        elif self.is_drinking and tilt_angle <= self.TILT_THRESHOLD:
+            # Bottle is no longer tilted enough - end session immediately
+            self.end_drinking_session(current_time)
         else:
-            # Bottle is not tilted enough
+            # Bottle is not tilted enough or movement is not stable
             if self.is_drinking:
-                # Check if drinking session should end
+                # Check if drinking session should end due to timeout
                 if current_time - self.last_drinking_time > self.DRINKING_TIMEOUT:
                     self.end_drinking_session(current_time)
+        
+        # Update last tilt for next comparison
+        self.last_tilt_y = tilt_angle
     
     def calculate_water_consumption(self, tilt_angle, time_elapsed):
-        """Calculate water consumption based on tilt angle and time (FIXED VERSION)"""
-        # Calculate flow rate based on tilt angle with better limits
+        """Calculate water consumption based on tilt angle and time (IMPROVED VERSION)"""
+        # Calculate flow rate based on tilt angle with more realistic values
+        # More aggressive flow rate calculation
         angle_factor = max(0, (tilt_angle - self.TILT_THRESHOLD) / 10.0)
         flow_rate = self.BASE_FLOW_RATE * (1 + angle_factor * self.ANGLE_MULTIPLIER)
         
@@ -202,9 +245,9 @@ class GY521WaterTrackerFixed:
         # Calculate water consumed in this time interval
         water_consumed = flow_rate * time_elapsed
         
-        # Additional safety check - limit to reasonable values
-        if water_consumed > 1.0:  # More than 1ml per update is suspicious
-            water_consumed = 1.0
+        # More reasonable safety check - limit to 5ml per update
+        if water_consumed > 5.0:
+            water_consumed = 5.0
         
         return water_consumed
     
@@ -224,9 +267,9 @@ class GY521WaterTrackerFixed:
     
     def print_status(self):
         """Print current status information"""
-        tilt_magnitude = math.sqrt(self.tilt_angle_x**2 + self.tilt_angle_y**2)
+        y_tilt_abs = abs(self.tilt_angle_y)
         
-        status = f"Tilt - X: {self.tilt_angle_x:.1f}°, Y: {self.tilt_angle_y:.1f}°, Magnitude: {tilt_magnitude:.1f}° | "
+        status = f"Tilt - X: {self.tilt_angle_x:.1f}°, Y: {self.tilt_angle_y:.1f}° (Drinking: {y_tilt_abs:.1f}°) | "
         
         if self.is_drinking:
             status += f"DRINKING | Session: {self.session_water_consumed:.1f} ml | "
@@ -256,8 +299,10 @@ class GY521WaterTrackerFixed:
     
     def run(self):
         """Main loop for water tracking"""
-        print("KOI - GY521 Water Consumption Tracker (QNX Version with Fixed Calculations)")
+        print("KOI - GY521 Water Consumption Tracker (QNX Version with Robust Detection)")
         print("Initialization complete!")
+        print(f"Tilt threshold: {self.TILT_THRESHOLD}°")
+        print(f"Noise threshold: {self.NOISE_THRESHOLD:.1f}°")
         print("Tilt the bottle to start tracking water consumption...")
         print()
         

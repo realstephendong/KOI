@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """
-GY521 Test Script for Raspberry Pi (QNX Version with Basic smbus)
+KOI - GY521 Water Consumption Tracker Test Version
 
-Simple test to verify GY521 (MPU6050) module is working correctly
-using only basic smbus methods available on QNX.
+This is a test version to debug the drinking detection issue.
 """
 
 import smbus
 import time
 import math
 
-class GY521TestBasic:
+class GY521TestTracker:
     def __init__(self):
         # GY521 (MPU6050) I2C address
         self.MPU6050_ADDR = 0x68
@@ -19,23 +18,20 @@ class GY521TestBasic:
         self.ACCEL_XOUT_H = 0x3B
         self.PWR_MGMT_1 = 0x6B
         
-        # Sensor data
-        self.accel_x = 0.0
-        self.accel_y = 0.0
-        self.accel_z = 0.0
-        self.tilt_angle_x = 0.0
-        self.tilt_angle_y = 0.0
+        # Test threshold
+        self.TILT_THRESHOLD = 15.0
         
-        # Initialize I2C bus for QNX using standard smbus
+        # Calibration offsets
+        self.calibrated_x = 0.0
+        self.calibrated_y = 0.0
+        
+        # Initialize I2C bus
         try:
-            # Try bus 1 first (standard Raspberry Pi I2C)
             self.bus = smbus.SMBus(1)
             print("I2C bus initialized successfully using smbus(1)")
         except Exception as e:
             print(f"Failed to initialize I2C bus with smbus(1): {e}")
-            print("Trying alternative I2C bus...")
             try:
-                # Try bus 0 as fallback
                 self.bus = smbus.SMBus(0)
                 print("I2C bus initialized successfully using smbus(0)")
             except Exception as e2:
@@ -43,41 +39,57 @@ class GY521TestBasic:
                 raise
         
         # Initialize MPU6050
-        self.init_mpu6050()
+        if not self.init_mpu6050():
+            raise Exception("Failed to initialize MPU6050!")
+        
+        # Calibrate the sensor
+        self.calibrate_sensor()
     
     def init_mpu6050(self):
         """Initialize the MPU6050 sensor"""
         try:
-            # Wake up the MPU6050
             self.bus.write_byte_data(self.MPU6050_ADDR, self.PWR_MGMT_1, 0)
             time.sleep(0.1)
             print("MPU6050 initialized successfully")
+            return True
         except Exception as e:
             print(f"Failed to initialize MPU6050: {e}")
-            raise
+            return False
+    
+    def calibrate_sensor(self):
+        """Calibrate the sensor"""
+        print("Calibrating sensor...")
+        print("Keep the bottle level and still...")
+        
+        sum_x = 0.0
+        sum_y = 0.0
+        
+        for i in range(100):
+            self.read_accelerometer()
+            sum_x += self.accel_x
+            sum_y += self.accel_y
+            time.sleep(0.01)
+        
+        self.calibrated_x = sum_x / 100
+        self.calibrated_y = sum_y / 100
+        
+        print("Calibration complete!")
+        print(f"Calibration offsets - X: {self.calibrated_x:.3f}, Y: {self.calibrated_y:.3f}")
     
     def read_accelerometer(self):
-        """Read accelerometer data from MPU6050 using basic smbus methods"""
+        """Read accelerometer data"""
         try:
-            # Read accelerometer data byte by byte using basic smbus methods
-            # Read X-axis (high and low bytes)
             accel_x_high = self.bus.read_byte_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H)
             accel_x_low = self.bus.read_byte_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H + 1)
-            
-            # Read Y-axis (high and low bytes)
             accel_y_high = self.bus.read_byte_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H + 2)
             accel_y_low = self.bus.read_byte_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H + 3)
-            
-            # Read Z-axis (high and low bytes)
             accel_z_high = self.bus.read_byte_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H + 4)
             accel_z_low = self.bus.read_byte_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H + 5)
             
-            # Convert to 16-bit signed integers
             accel_x_raw = (accel_x_high << 8) | accel_x_low
             accel_y_raw = (accel_y_high << 8) | accel_y_low
             accel_z_raw = (accel_z_high << 8) | accel_z_low
             
-            # Handle negative values (two's complement)
             if accel_x_raw > 32767:
                 accel_x_raw -= 65536
             if accel_y_raw > 32767:
@@ -85,49 +97,77 @@ class GY521TestBasic:
             if accel_z_raw > 32767:
                 accel_z_raw -= 65536
             
-            # Convert to g-force (assuming ±2g range)
             self.accel_x = accel_x_raw / 16384.0
             self.accel_y = accel_y_raw / 16384.0
             self.accel_z = accel_z_raw / 16384.0
+            
+            self.accel_x -= self.calibrated_x
+            self.accel_y -= self.calibrated_y
             
         except Exception as e:
             print(f"Error reading accelerometer: {e}")
     
     def calculate_tilt_angles(self):
-        """Calculate tilt angles from accelerometer data"""
+        """Calculate tilt angles"""
         self.tilt_angle_x = math.degrees(math.atan2(self.accel_y, math.sqrt(self.accel_x**2 + self.accel_z**2)))
         self.tilt_angle_y = math.degrees(math.atan2(-self.accel_x, math.sqrt(self.accel_y**2 + self.accel_z**2)))
     
     def run_test(self):
-        """Run the test loop"""
-        print("GY521 Test Script (QNX Version with Basic smbus)")
-        print("================================================")
-        print("MPU6050 initialized!")
-        print("Keep the sensor level and still for testing...")
+        """Run the test with detailed debugging"""
+        print("KOI - GY521 Test Tracker")
+        print(f"Tilt threshold: {self.TILT_THRESHOLD}°")
+        print("Starting test...")
         print()
+        
+        last_print_time = time.time()
+        consecutive_above_threshold = 0
+        consecutive_below_threshold = 0
         
         try:
             while True:
+                current_time = time.time()
+                
+                # Read sensor data
                 self.read_accelerometer()
                 self.calculate_tilt_angles()
                 
-                tilt_magnitude = math.sqrt(self.tilt_angle_x**2 + self.tilt_angle_y**2)
+                # Calculate Y-axis tilt (drinking axis)
+                y_tilt_abs = abs(self.tilt_angle_y)
                 
-                print(f"Raw Accel - X: {self.accel_x:.3f}g, Y: {self.accel_y:.3f}g, Z: {self.accel_z:.3f}g | "
-                      f"Tilt - X: {self.tilt_angle_x:.1f}°, Y: {self.tilt_angle_y:.1f}°, Magnitude: {tilt_magnitude:.1f}°")
+                # Check threshold
+                above_threshold = y_tilt_abs > self.TILT_THRESHOLD
                 
-                time.sleep(0.5)
+                if above_threshold:
+                    consecutive_above_threshold += 1
+                    consecutive_below_threshold = 0
+                else:
+                    consecutive_below_threshold += 1
+                    consecutive_above_threshold = 0
+                
+                # Print detailed status every 0.5 seconds
+                if current_time - last_print_time >= 0.5:
+                    status = f"Tilt - X: {self.tilt_angle_x:.1f}°, Y: {self.tilt_angle_y:.1f}° (Drinking: {y_tilt_abs:.1f}°)"
+                    
+                    if above_threshold:
+                        status += f" | ABOVE THRESHOLD ({consecutive_above_threshold} consecutive)"
+                        if consecutive_above_threshold == 1:
+                            status += " <<< TRIGGER POINT!"
+                    else:
+                        status += f" | below threshold ({consecutive_below_threshold} consecutive)"
+                    
+                    print(status)
+                    last_print_time = current_time
+                
+                time.sleep(0.05)  # 50ms delay
                 
         except KeyboardInterrupt:
-            print("\nTest stopped by user")
+            print("\nTest stopped.")
         finally:
             self.bus.close()
 
 if __name__ == "__main__":
     try:
-        test = GY521TestBasic()
-        test.run_test()
+        tracker = GY521TestTracker()
+        tracker.run_test()
     except Exception as e:
-        print(f"Error: {e}")
-        print("Make sure the GY521 module is properly connected to the Raspberry Pi.")
-        print("On QNX, ensure I2C is enabled and the device files exist.") 
+        print(f"Error: {e}") 
