@@ -28,7 +28,7 @@ def setup():
             spi = board.SPI()
             dc_pin = digitalio.DigitalInOut(board.D25)     # GPIO 25
             reset_pin = digitalio.DigitalInOut(board.D13)   # GPIO 13
-            cs_pin = digitalio.DigitalInOut(board.CE0)      # GPIO 8 (CE0)
+            cs_pin = digitalio.DigitalInOut(board.CE1)      # GPIO 8 (CE0)
             display = adafruit_ssd1306.SSD1306_SPI(128, 96, spi, dc_pin, reset_pin, cs_pin)
             display.fill(0)
             display.show()
