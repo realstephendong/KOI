@@ -19,7 +19,7 @@ def setup():
         from luma.core.interface.serial import spi
         from luma.oled.device import ssd1327
 
-        serial = spi(port=0, device=1, gpio_DC=25, gpio_RST=13, gpio_CS=18)
+        serial = spi(port=0, device=0, gpio_DC=25, gpio_RST=13, gpio_CS=18)
         device = ssd1327(serial_interface=serial, width=128, height=96)
         return device
 
