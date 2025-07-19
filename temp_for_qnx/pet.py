@@ -9,7 +9,7 @@ class Pet:
 
         self.curr_frame = 0
 
-    def create_pet_frames(pet_choice):
+    def create_pet_frames(self, pet_choice):
         if (pet_choice == "koi"):            
             pet_frames = {
                 "idle": [
