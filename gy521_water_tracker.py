@@ -31,7 +31,8 @@ class GY521WaterTrackerFixed:
         self.PWR_MGMT_1 = 0x6B
         
         # Calibration and threshold values
-        self.TILT_THRESHOLD = 25.0        # Increased threshold to reduce false positives
+        self.TILT_THRESHOLD = 70.0        # Increased threshold for more realistic pouring detection
+        self.TILT_UPPER_BOUND = 180.0     # Allow drinking detection up to fully upside down
         self.DRINKING_TIMEOUT = 2.0       # Reduced timeout for quicker session end (seconds)
         self.MIN_DRINKING_TIME = 0.3      # Reduced minimum time for quick sips (seconds)
         self.CALIBRATION_SAMPLES = 200    # Increased samples for better calibration
@@ -52,6 +53,7 @@ class GY521WaterTrackerFixed:
         # Calibration offsets
         self.calibrated_x = 0.0
         self.calibrated_y = 0.0
+        self.calibrated_z = 0.0
         
         # Movement detection
         self.last_tilt_y = 0.0
@@ -107,27 +109,32 @@ class GY521WaterTrackerFixed:
         
         sum_x = 0.0
         sum_y = 0.0
+        sum_z = 0.0
         readings = []
         
         for i in range(self.CALIBRATION_SAMPLES):
             self.read_accelerometer()
-            readings.append((self.accel_x, self.accel_y))
+            readings.append((self.accel_x, self.accel_y, self.accel_z))
             sum_x += self.accel_x
             sum_y += self.accel_y
+            sum_z += self.accel_z
             time.sleep(0.02)  # 50Hz sampling
         
         # Calculate mean
         self.calibrated_x = sum_x / self.CALIBRATION_SAMPLES
         self.calibrated_y = sum_y / self.CALIBRATION_SAMPLES
+        self.calibrated_z = sum_z / self.CALIBRATION_SAMPLES
+        # Store upright vector for orientation-independent tilt
+        self.upright_vector = [self.calibrated_x, self.calibrated_y, self.calibrated_z]
         
         # Calculate standard deviation to understand noise level
-        var_x = sum((x - self.calibrated_x) ** 2 for x, _ in readings) / self.CALIBRATION_SAMPLES
-        var_y = sum((y - self.calibrated_y) ** 2 for _, y in readings) / self.CALIBRATION_SAMPLES
+        var_x = sum((x - self.calibrated_x) ** 2 for x, _, _ in readings) / self.CALIBRATION_SAMPLES
+        var_y = sum((y - self.calibrated_y) ** 2 for _, y, _ in readings) / self.CALIBRATION_SAMPLES
         std_x = math.sqrt(var_x)
         std_y = math.sqrt(var_y)
         
         print("Calibration complete!")
-        print(f"Calibration offsets - X: {self.calibrated_x:.3f}, Y: {self.calibrated_y:.3f}")
+        print(f"Calibration offsets - X: {self.calibrated_x:.3f}, Y: {self.calibrated_y:.3f}, Z: {self.calibrated_z:.3f}")
         print(f"Noise levels - X: ±{std_x:.3f}g, Y: ±{std_y:.3f}g")
         
         # Adjust noise threshold based on actual sensor noise
@@ -171,6 +178,7 @@ class GY521WaterTrackerFixed:
             # Apply calibration offsets
             self.accel_x -= self.calibrated_x
             self.accel_y -= self.calibrated_y
+            self.accel_z -= self.calibrated_z
             
         except Exception as e:
             print(f"Error reading accelerometer: {e}")
@@ -182,45 +190,52 @@ class GY521WaterTrackerFixed:
         self.tilt_angle_y = math.degrees(math.atan2(-self.accel_x, math.sqrt(self.accel_y**2 + self.accel_z**2)))
     
     def detect_drinking(self, current_time):
-        """Detect drinking based on tilt angle and duration with noise filtering"""
-        # Only use Y-axis tilt for drinking detection (forward/backward tilt)
-        # X-axis rotation (left/right) doesn't cause water to pour
-        tilt_angle = abs(self.tilt_angle_y)
-        
+        """Detect drinking based on orientation-independent tilt angle and duration with noise filtering"""
+        # Calculate current acceleration vector (raw, not offset)
+        current_vector = [self.accel_x + self.calibrated_x, self.accel_y + self.calibrated_y, self.accel_z + self.calibrated_z]
+        upright_vector = self.upright_vector
+        # Calculate angle between current vector and upright vector
+        dot = sum(a*b for a, b in zip(current_vector, upright_vector))
+        mag1 = math.sqrt(sum(a*a for a in current_vector))
+        mag2 = math.sqrt(sum(b*b for b in upright_vector))
+        # Clamp value to avoid math domain errors
+        cos_angle = max(-1.0, min(1.0, dot / (mag1 * mag2))) if mag1 > 0 and mag2 > 0 else 1.0
+        total_tilt = math.degrees(math.acos(cos_angle))
+
         # Check for significant movement (not just noise)
-        tilt_change = abs(tilt_angle - self.last_tilt_y)
-        
+        tilt_change = abs(total_tilt - self.last_tilt_y)
+
         if tilt_change > self.NOISE_THRESHOLD:
             # Significant movement detected
             self.stable_readings = 0
         else:
             # Movement is stable
             self.stable_readings += 1
-        
-        # Only trigger if we have stable readings above threshold
-        if tilt_angle > self.TILT_THRESHOLD and self.stable_readings >= self.required_stable_readings:
+
+        # Only trigger if we have stable readings above threshold and within upper bound
+        if (self.TILT_THRESHOLD < total_tilt < self.TILT_UPPER_BOUND) and self.stable_readings >= self.required_stable_readings:
             # DEBUG: Print threshold comparison
             if not self.is_drinking:  # Only print when first crossing threshold
-                print(f"DEBUG: Y-axis tilt {tilt_angle:.1f}° vs threshold {self.TILT_THRESHOLD}° (stable: {self.stable_readings})")
-            
+                print(f"DEBUG: Orientation-independent tilt {total_tilt:.1f}° vs threshold {self.TILT_THRESHOLD}° (stable: {self.stable_readings})")
+
             # Bottle is tilted enough to be drinking
             if not self.is_drinking:
                 # Start a new drinking session
                 self.is_drinking = True
                 self.drinking_start_time = current_time
                 self.session_water_consumed = 0.0
-                print(f"Drinking detected! Starting session... (Y-tilt: {tilt_angle:.1f}°)")
-            
+                print(f"Drinking detected! Starting session... (Tilt: {total_tilt:.1f}°)")
+
             # Calculate water consumption for this time interval
             time_elapsed = current_time - self.last_drinking_time
             if time_elapsed > 0:
-                water_consumed = self.calculate_water_consumption(tilt_angle, time_elapsed)
+                water_consumed = self.calculate_water_consumption(total_tilt, time_elapsed)
                 self.session_water_consumed += water_consumed
                 self.total_water_consumed += water_consumed
-            
+
             self.last_drinking_time = current_time
-        elif self.is_drinking and tilt_angle <= self.TILT_THRESHOLD:
-            # Bottle is no longer tilted enough - end session immediately
+        elif self.is_drinking and (total_tilt <= self.TILT_THRESHOLD or total_tilt >= self.TILT_UPPER_BOUND):
+            # Bottle is no longer tilted enough or is too far upside down - end session immediately
             self.end_drinking_session(current_time)
         else:
             # Bottle is not tilted enough or movement is not stable
@@ -228,9 +243,9 @@ class GY521WaterTrackerFixed:
                 # Check if drinking session should end due to timeout
                 if current_time - self.last_drinking_time > self.DRINKING_TIMEOUT:
                     self.end_drinking_session(current_time)
-        
+
         # Update last tilt for next comparison
-        self.last_tilt_y = tilt_angle
+        self.last_tilt_y = total_tilt
     
     def calculate_water_consumption(self, tilt_angle, time_elapsed):
         """Calculate water consumption based on tilt angle and time (IMPROVED VERSION)"""
