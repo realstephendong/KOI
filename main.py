@@ -10,7 +10,7 @@ USE_EMULATOR = False
 FPS = 1
 
 yellow_button = Button(17)
-blue_button = Button(27)
+blue_button = Button(22)
 
 def setup():
     if USE_EMULATOR:
