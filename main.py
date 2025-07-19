@@ -9,8 +9,9 @@ from graphics.ui import draw_ui
 USE_EMULATOR = False
 FPS = 1
 
+# Use GPIO 17 (Select) and GPIO 27 (Confirm) for buttons, per GPIO_SETUP.md
 yellow_button = Button(17)
-blue_button = Button(22)
+blue_button = Button(27)
 
 def setup():
     if USE_EMULATOR:
