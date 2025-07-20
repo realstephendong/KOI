@@ -19,6 +19,7 @@ class Mascot:
         self.name = self.config['name']
         
         # Health and stats
+        self.hearts = 0
         self.health = self.config['base_health']
         self.max_health = self.config['base_health']
         self.hydration_level = 100
@@ -41,22 +42,27 @@ class Mascot:
         self.ai_features = []
         self.last_ai_update = 0
         
-        # Animation properties
-        self.x = SCREEN_WIDTH // 2
-        self.y = SCREEN_HEIGHT // 2
-        self.size = 100
+        # Animation properties (for UI to use)
         self.bounce_offset = 0
         self.bounce_speed = 0.05
+        self.rotation = 0
         
     def update(self, dt, water_drunk=0, is_shaking=False):
         """Update mascot state and animations"""
         current_time = time.time()
         
         # Update health based on time
-        if current_time - self.last_health_update >= 5:  # Every minute
+        if current_time - self.last_health_update >= 2:  # Every 5 seconds
             self.health -= self.config['health_decay_rate']
             self.health = max(0, self.health)
             self.last_health_update = current_time
+
+        if self.health == 0:
+            self.kill()
+        elif self.health < 40:
+            self.make_sad()
+        else:
+            self.make_idle()
         
         # Handle water drinking
         if water_drunk > 0:
@@ -94,6 +100,19 @@ class Mascot:
         self.dizzy_timer = 5.0  # Dizzy for 5 seconds
         self.current_state = MascotState.DIZZY
         self.state_timer = 0
+
+    def kill(self):
+        """Kill pet"""
+        self.current_state = MascotState.DEATH
+    
+    def make_sad(self):
+        """Make sad"""
+        self.current_state = MascotState.SAD
+        self.hearts = max(0, self.hearts - 1)
+    
+    def make_idle(self):
+        """Make idel"""
+        self.current_state = MascotState.IDLE
         
     def update_animation(self, dt):
         """Update animation frames and effects"""
@@ -132,31 +151,30 @@ class Mascot:
                 return data['color']
         return RED
         
-    def draw_health_bar(self, screen):
-        """Draw health bar with pixel-art style"""
-        bar_width = 200
-        bar_height = 20
-        bar_x = self.x - bar_width // 2
-        bar_y = self.y + self.size // 2 + 20
-        
-        # Background
-        pygame.draw.rect(screen, DARK_GRAY, (bar_x, bar_y, bar_width, bar_height))
-        pygame.draw.rect(screen, BLACK, (bar_x, bar_y, bar_width, bar_height), 2)
-        
-        # Health fill
-        health_width = int((self.health / self.max_health) * bar_width)
-        health_color = self.get_health_color()
-        if health_width > 0:
-            pygame.draw.rect(screen, health_color, (bar_x + 2, bar_y + 2, health_width - 4, bar_height - 4))
-        
-        # Pixel-art border effect
-        pygame.draw.rect(screen, LIGHT_GRAY, (bar_x + 1, bar_y + 1, bar_width - 2, bar_height - 2), 1)
+    def get_animation_state(self):
+        """Get current animation state for UI to use"""
+        if self.current_state == MascotState.DEATH:
+            return "death"
+        elif self.current_state == MascotState.SAD:
+            return "sad"
+        elif self.current_state == MascotState.DIZZY:
+            return "dizzy"
+        else:
+            return "idle"
+            
+    def get_animation_frame(self):
+        """Get current animation frame for UI to use"""
+        if self.current_state == MascotState.DEATH or self.current_state == MascotState.DIZZY:
+            return 0
+        else:
+            return int(self.animation_frame) % 2  # Assuming 2-frame animations
         
     def save_state(self):
         """Save mascot state to file"""
         state = {
             'type': self.type,
             'health': self.health,
+            'hearts': self.hearts,
             'hydration_level': self.hydration_level,
             'last_drink_time': self.last_drink_time,
             'ai_features': self.ai_features
@@ -173,6 +191,7 @@ class Mascot:
                 
             self.health = state.get('health', self.max_health)
             self.hydration_level = state.get('hydration_level', 100)
+            self.hearts = state.get('hearts', 0)
             self.last_drink_time = state.get('last_drink_time', time.time())
             self.ai_features = state.get('ai_features', [])
             

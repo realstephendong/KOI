@@ -4,48 +4,55 @@ import time
 import math
 import random
 import os
-from config import *
-from graphics.mascot import Mascot, MascotState
+from config_raspberry_pi import *
+from mascot import Mascot, MascotState
 from ai_manager import AIManager
 from sensor_manager import SensorManager
-from graphics.brick_game import BrickGame
-from graphics.ui import UIController, draw_ui
-from graphics.pet import Pet
+from brick_game import BrickGame
+from ui import UIController
+from pet import Pet
 
-# Try to import GPIO for Raspberry Pi, fallback to keyboard for testing
+# Import GPIO for Raspberry Pi
 try:
     from gpiozero import Button
     GPIO_AVAILABLE = True
     print("🔌 GPIO library found - Running on Raspberry Pi")
 except ImportError:
     GPIO_AVAILABLE = False
-    print("⌨️  GPIO library not found - Using keyboard controls for testing")
-    print("   Press 'A' for yellow button (pet), 'D' for blue button (game)")
+    print("❌ GPIO library not found - Please install gpiozero on Raspberry Pi")
+    sys.exit(1)
 
 class TamagotchiWaterBottle:
     def __init__(self):
         pygame.init()
         
-        # Set up display with proper orientation for Raspberry Pi
-        # Check if we're on Raspberry Pi and set appropriate flags
-        import platform
-        is_raspberry_pi = platform.system() == "Linux" and os.path.exists("/proc/cpuinfo")
+        # Raspberry Pi specific display setup
+        os.environ['SDL_VIDEODRIVER'] = 'fbcon'
+        os.environ['SDL_FBDEV'] = '/dev/fb0'
+        os.environ['SDL_NOMOUSE'] = '1'
         
-        if is_raspberry_pi:
-            # Raspberry Pi specific display settings
-            os.environ['SDL_VIDEODRIVER'] = 'fbcon'
-            os.environ['SDL_FBDEV'] = '/dev/fb0'
-            os.environ['SDL_NOMOUSE'] = '1'
-            
-            # Force fullscreen and proper orientation
-            self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
-            print("🔧 Raspberry Pi detected - Using fullscreen mode")
+        # Set up display with Raspberry Pi configuration for vertical orientation
+        # Physical screen dimensions (what the user sees)
+        self.DEVICE_WIDTH = 1024   # Physical screen width
+        self.DEVICE_HEIGHT = 600   # Physical screen height
+        
+        # Application canvas dimensions (what we draw on)
+        self.APP_WIDTH = 600       # App width (will be rotated)
+        self.APP_HEIGHT = 1024     # App height (will be rotated)
+        
+        if PI_FULLSCREEN:
+            # Create the visible screen in fullscreen
+            self.screen = pygame.display.set_mode((self.DEVICE_WIDTH, self.DEVICE_HEIGHT), pygame.FULLSCREEN)
+            print("🔧 Raspberry Pi fullscreen mode enabled - Vertical orientation")
         else:
-            # Development/desktop mode
-            self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-            print("💻 Desktop mode detected")
+            self.screen = pygame.display.set_mode((self.DEVICE_WIDTH, self.DEVICE_HEIGHT))
+            print("🔧 Raspberry Pi windowed mode - Vertical orientation")
             
-        pygame.display.set_caption("Tamagotchi Water Bottle")
+        # Create the offscreen canvas for drawing
+        self.offscreen = pygame.Surface((self.APP_WIDTH, self.APP_HEIGHT))
+        print(f"🎨 Canvas: {self.APP_WIDTH}x{self.APP_HEIGHT} on {self.DEVICE_WIDTH}x{self.DEVICE_HEIGHT} screen")
+            
+        pygame.display.set_caption("Tamagotchi Water Bottle - Raspberry Pi")
         self.clock = pygame.time.Clock()
         
         # Initialize components
@@ -53,27 +60,15 @@ class TamagotchiWaterBottle:
         self.ai_manager = AIManager()
         self.ui_controller = UIController()  # New UI controller
         
-        # Initialize buttons based on available hardware
-        if GPIO_AVAILABLE:
-            # Raspberry Pi GPIO buttons
-            self.yellow_button = Button(17)  # Left button (pet)
-            self.blue_button = Button(27)    # Right button (game)
-            
-            # Button state tracking
-            self.yellow_button_pressed = False
-            self.blue_button_pressed = False
-            self.yellow_button_last_state = False
-            self.blue_button_last_state = False
-            print("🔌 GPIO buttons initialized: Yellow (GPIO 17), Blue (GPIO 27)")
-        else:
-            # Fallback to keyboard for testing
-            self.yellow_button = None
-            self.blue_button = None
-            self.yellow_button_pressed = False
-            self.blue_button_pressed = False
-            self.yellow_button_last_state = False
-            self.blue_button_last_state = False
-            print("⌨️  Using keyboard controls: 'A' (pet), 'D' (game)")
+        # Initialize GPIO buttons for Raspberry Pi
+        self.yellow_button = Button(17)  # Left button (pet)
+        self.blue_button = Button(27)    # Right button (game)
+        
+        # Button state tracking
+        self.yellow_button_pressed = False
+        self.blue_button_pressed = False
+        self.yellow_button_last_state = False
+        self.blue_button_last_state = False
         
         # Mascot management
         self.current_mascot = Mascot('koi')
@@ -125,7 +120,7 @@ class TamagotchiWaterBottle:
         print(f"📍 Mascot positioned at ({mascot_x}, {mascot_y})")
         
     def handle_events(self):
-        """Handle input events (GPIO or keyboard)"""
+        """Handle GPIO button input"""
         current_time = time.time()
         
         # Check for pygame quit event
@@ -134,14 +129,6 @@ class TamagotchiWaterBottle:
                 self.running = False
                 return
         
-        # Handle input based on available hardware
-        if GPIO_AVAILABLE:
-            self.handle_gpio_input(current_time)
-        else:
-            self.handle_keyboard_input(current_time)
-            
-    def handle_gpio_input(self, current_time):
-        """Handle GPIO button input"""
         # Handle yellow button (GPIO 17)
         if self.yellow_button.is_pressed and not self.yellow_button_last_state:
             if current_time - self.last_button_press < self.button_debounce:
@@ -160,28 +147,6 @@ class TamagotchiWaterBottle:
         self.yellow_button_last_state = self.yellow_button.is_pressed
         self.blue_button_last_state = self.blue_button.is_pressed
         
-    def handle_keyboard_input(self, current_time):
-        """Handle keyboard input for testing"""
-        keys = pygame.key.get_pressed()
-        
-        # Handle 'A' key (yellow button equivalent)
-        if keys[pygame.K_a] and not self.yellow_button_last_state:
-            if current_time - self.last_button_press < self.button_debounce:
-                return  # Debounce
-            self.handle_left_button_combo(current_time)
-            self.last_button_press = current_time
-            
-        # Handle 'D' key (blue button equivalent)
-        if keys[pygame.K_d] and not self.blue_button_last_state:
-            if current_time - self.last_button_press < self.button_debounce:
-                return  # Debounce
-            self.handle_right_button_combo(current_time)
-            self.last_button_press = current_time
-        
-        # Update button states
-        self.yellow_button_last_state = keys[pygame.K_a]
-        self.blue_button_last_state = keys[pygame.K_d]
-        
     def handle_left_button_combo(self, current_time):
         """Handle left button with press counting for different actions"""
         # Check if this is part of a combo
@@ -191,8 +156,7 @@ class TamagotchiWaterBottle:
             self.left_button_press_count = 1
             
         self.last_left_press_time = current_time
-        button_name = "Yellow (GPIO 17)" if GPIO_AVAILABLE else "A key"
-        print(f"🔘 {button_name} pressed {self.left_button_press_count} times")
+        print(f"🔘 Yellow button (GPIO 17) pressed {self.left_button_press_count} times")
         
         # Handle different press counts
         if self.button_mode == BUTTON_MODE_MAIN:
@@ -217,8 +181,7 @@ class TamagotchiWaterBottle:
             self.right_button_press_count = 1
             
         self.last_right_press_time = current_time
-        button_name = "Blue (GPIO 27)" if GPIO_AVAILABLE else "D key"
-        print(f"🔘 {button_name} pressed {self.right_button_press_count} times")
+        print(f"🔘 Blue button (GPIO 27) pressed {self.right_button_press_count} times")
         
         # Handle different press counts
         if self.button_mode == BUTTON_MODE_MAIN:
@@ -237,8 +200,6 @@ class TamagotchiWaterBottle:
         current_type = self.current_mascot.type
         if current_type == 'koi':
             new_type = 'soy'
-        elif current_type == 'soy':
-            new_type = 'joy'
         else:
             new_type = 'koi'
             
@@ -253,6 +214,27 @@ class TamagotchiWaterBottle:
         self.pet.start_speaking(f"Hi! I'm {self.current_mascot.name}! Nice to meet you!")
         
         print(f"🔄 Switched mascot from {current_type} to {new_type}")
+        
+    def special_mascot_interaction(self):
+        """Special interaction with mascot (triple press)"""
+        # Give extra health and hearts
+        self.current_mascot.health = min(self.current_mascot.max_health, 
+                                       self.current_mascot.health + 15)
+        
+        self.hearts = min(5, self.hearts + 2)
+        
+        # Special state
+        self.current_mascot.current_state = MascotState.HAPPY
+        self.current_mascot.state_timer = 0
+        
+        # Add special particles
+        mascot_x, mascot_y = self.ui_controller.get_mascot_position()
+        self.add_particles(mascot_x, mascot_y, 'sparkle')
+        
+        # Special message
+        self.pet.start_speaking("Wow! You really love me! Thank you for the special attention!")
+        
+        print("✨ Special mascot interaction triggered!")
         
     def show_stats(self):
         """Show drinking statistics (double press right)"""
@@ -297,7 +279,7 @@ class TamagotchiWaterBottle:
             happiness_boost = min(20, final_score // 10)
             self.current_mascot.health = min(self.current_mascot.max_health, 
                                            self.current_mascot.health + happiness_boost)
-            self.current_mascot.current_state = MascotState.IDLE
+            self.current_mascot.current_state = MascotState.HAPPY
             self.current_mascot.state_timer = 0
             
             # Mascot speaks about the game result
@@ -308,12 +290,13 @@ class TamagotchiWaterBottle:
             
     def pet_mascot(self):
         """Pet the mascot for positive interaction"""
-        self.current_mascot.current_state = MascotState.IDLE
+        self.current_mascot.current_state = MascotState.HAPPY
         self.current_mascot.state_timer = 0
+        self.current_mascot.health = min(self.current_mascot.max_health, 
+                                       self.current_mascot.health + 5)
         
         # Add hearts for affection
-        self.hearts = min(3, self.hearts + 1)
-        self.pet.hearts = self.hearts
+        self.hearts = min(5, self.hearts + 1)
         
         # Mascot speaks directly
         if not self.pet.speaking:
@@ -430,7 +413,7 @@ class TamagotchiWaterBottle:
             self.current_mascot.save_state()
             
     def draw(self):
-        """Draw everything to screen using new UI controller system"""
+        """Draw everything to offscreen canvas, rotate, then display"""
         if self.playing_brick:
             # Draw brick game
             if self.brick_game:
@@ -438,8 +421,8 @@ class TamagotchiWaterBottle:
                 pygame.display.flip()
             return
             
-        # Clear screen
-        self.screen.fill(BLACK)
+        # Clear offscreen canvas
+        self.offscreen.fill(BLACK)
         
         # Get mascot position and animation info
         mascot_x, mascot_y = self.ui_controller.get_mascot_position()
@@ -447,28 +430,41 @@ class TamagotchiWaterBottle:
         animation_frame = self.current_mascot.get_animation_frame()
         
         # Draw mascot using UI controller
-        self.ui_controller.draw_mascot(self.screen, self.current_mascot.type, animation_state, animation_frame)
+        self.ui_controller.draw_mascot(self.offscreen, self.current_mascot.type, animation_state, animation_frame)
         
         # Draw UI elements using UI controller
         health_percentage = (self.current_mascot.health / self.current_mascot.max_health) * 100
-        self.ui_controller.draw_ui(self.screen, self.hearts, health_percentage)
+        self.ui_controller.draw_ui(self.offscreen, self.hearts, health_percentage)
         
-        # Draw particles
-        self.draw_particles()
+        # Draw particles on offscreen canvas
+        self.draw_particles_offscreen()
         
-        # Draw mascot speech bubble
+        # Draw mascot speech bubble on offscreen canvas
         if self.pet.speaking:
-            self.pet.draw_speech_bubble(self.screen, mascot_x, mascot_y)
+            self.pet.draw_speech_bubble(self.offscreen, mascot_x, mascot_y)
             
-        # Draw achievement popup
+        # Draw achievement popup on offscreen canvas
         if self.achievement_timer > 0:
-            self.draw_achievement()
-            
+            self.draw_achievement_offscreen()
+        
+        # Rotate the entire offscreen canvas 90 degrees counter-clockwise
+        rotated = pygame.transform.rotate(self.offscreen, 90)
+        
+        # Clear the visible screen
+        self.screen.fill(BLACK)
+        
+        # Center the rotated canvas on the screen
+        rotated_rect = rotated.get_rect()
+        rotated_rect.center = (self.DEVICE_WIDTH // 2, self.DEVICE_HEIGHT // 2)
+        
+        # Blit the rotated canvas to the visible screen
+        self.screen.blit(rotated, rotated_rect)
+        
         # Update display
         pygame.display.flip()
         
-    def draw_particles(self):
-        """Draw particle effects"""
+    def draw_particles_offscreen(self):
+        """Draw particle effects on offscreen canvas"""
         for particle in self.particles:
             alpha = particle['life'] / 60.0
             color = particle['color']
@@ -484,44 +480,44 @@ class TamagotchiWaterBottle:
                     (particle['x'] + 5, particle['y'] + 2),
                     (particle['x'] + 5, particle['y'] - 3),
                 ]
-                pygame.draw.polygon(self.screen, color, points)
+                pygame.draw.polygon(self.offscreen, color, points)
             else:
                 # Draw simple circle
-                pygame.draw.circle(self.screen, color, 
+                pygame.draw.circle(self.offscreen, color, 
                                  (int(particle['x']), int(particle['y'])), 3)
                                  
-    def draw_achievement(self):
-        """Draw achievement popup with pixel-art style"""
+    def draw_achievement_offscreen(self):
+        """Draw achievement popup on offscreen canvas with pixel-art style"""
         if not self.achievement_popup:
             return
             
         # Draw achievement box with pixel-art style
-        box_width = 300
+        box_width = 300  # Smaller for vertical layout
         box_height = 100
-        box_x = SCREEN_WIDTH // 2 - box_width // 2
+        box_x = self.APP_WIDTH // 2 - box_width // 2
         box_y = 80
         
         box_rect = pygame.Rect(box_x, box_y, box_width, box_height)
         
         # Box background
-        pygame.draw.rect(self.screen, WHITE, box_rect)
-        pygame.draw.rect(self.screen, BLACK, box_rect, BORDER_THICKNESS)
+        pygame.draw.rect(self.offscreen, WHITE, box_rect)
+        pygame.draw.rect(self.offscreen, BLACK, box_rect, BORDER_THICKNESS)
         
         # Draw pixel-art border effect
         highlight_rect = pygame.Rect(box_x + 3, box_y + 3, box_width - 6, box_height - 6)
-        pygame.draw.rect(self.screen, LIGHT_GRAY, highlight_rect, 1)
+        pygame.draw.rect(self.offscreen, LIGHT_GRAY, highlight_rect, 1)
         
         # Draw title
         font = pygame.font.Font(None, 24)
         text = font.render("ACHIEVEMENT!", True, BLACK)
         text_rect = text.get_rect(center=(box_rect.centerx, box_rect.y + 20))
-        self.screen.blit(text, text_rect)
+        self.offscreen.blit(text, text_rect)
         
         # Draw achievement text
         font = pygame.font.Font(None, 16)
         text = font.render(self.achievement_popup, True, BLACK)
         text_rect = text.get_rect(center=(box_rect.centerx, box_rect.y + 50))
-        self.screen.blit(text, text_rect)
+        self.offscreen.blit(text, text_rect)
             
     def run(self):
         """Main game loop"""

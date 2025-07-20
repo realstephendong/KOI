@@ -58,6 +58,14 @@ MASCOTS = {
         'favorite_food': 'water bubbles',
         'base_health': 100,
         'health_decay_rate': 10  # per minute
+    },
+    'joy': {
+        'name': 'Joy',
+        'color': WHITE,
+        'personality': 'angry and mean',
+        'favorite_food': 'rain',
+        'base_health': 100,
+        'health_decay_rate': 10  # per minute
     }
 }
 
