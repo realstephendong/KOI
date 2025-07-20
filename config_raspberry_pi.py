@@ -4,9 +4,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Raspberry Pi Display Configuration
-# For vertical mounting on Raspberry Pi
-SCREEN_WIDTH = 800   # Landscape width for Pi
-SCREEN_HEIGHT = 480  # Landscape height for Pi
+# For vertical/portrait orientation on 1024x600 screen
+# This will display sideways/tilted on the physical screen
+SCREEN_WIDTH = 600   # Vertical width (will be the height on screen)
+SCREEN_HEIGHT = 1024 # Vertical height (will be the width on screen)
 FPS = 60
 
 # Colors - Black and White Theme
