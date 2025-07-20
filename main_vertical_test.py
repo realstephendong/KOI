@@ -219,13 +219,6 @@ class TamagotchiWaterBottle:
         """Start the brick breaker game"""
         print("🎮 Starting Brick Breaker game...")
         try:
-            # Calibrate the sensor before starting the game
-            self.pet.start_speaking("Calibrating gyro...\nKeep the bottle level and still.")
-            pygame.display.flip()
-            self.sensor_manager.calibrate_sensor()
-            self.pet.start_speaking("Calibration complete! Starting game...")
-            pygame.display.flip()
-            time.sleep(1)
             self.playing_brick = True
             self.button_mode = BUTTON_MODE_BRICK
             # Pass the offscreen canvas and correct dimensions for vertical orientation
