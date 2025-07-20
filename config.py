@@ -7,6 +7,8 @@ load_dotenv()
 SCREEN_WIDTH = 480   # Rotated from 800
 SCREEN_HEIGHT = 800  # Rotated from 600
 FPS = 60
+MASCOT_FPS = 30  # FPS for mascot and UI updates
+BRICK_GAME_FPS = 60  # FPS for brick game (ball, paddle, etc.)
 
 # Colors - Black and White Theme
 WHITE = (255, 255, 255)

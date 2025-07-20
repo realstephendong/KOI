@@ -523,7 +523,10 @@ class TamagotchiWaterBottle:
     def run(self):
         """Main game loop"""
         while self.running:
-            dt = self.clock.tick(FPS) / 1000.0
+            if self.state == "brick_game":
+                dt = self.clock.tick(BRICK_GAME_FPS) / 1000.0
+            else:
+                dt = self.clock.tick(MASCOT_FPS) / 1000.0
             if (self.state == "selection"):
                 self.pet_selection_loop()
             elif (self.state == "pet"):
