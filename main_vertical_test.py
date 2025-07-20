@@ -140,7 +140,7 @@ class TamagotchiWaterBottle:
                 self.running = False
                 return
             if (GPIO_AVAILABLE):
-                self.yellow_button.when_released = lambda: setattr(self, 'blue_button_up', True)
+                self.yellow_button.when_released = lambda: setattr(self, 'yellow_button_up', True)
                 self.blue_button.when_released = lambda: setattr(self, 'blue_button_up', True)
             else:
                 if event.type == pygame.KEYUP:
