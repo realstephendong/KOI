@@ -387,8 +387,8 @@ class TamagotchiWaterBottle:
             if self.brick_game:
                 self.brick_game.draw()
                 
-                # Rotate the offscreen canvas 90 degrees counter-clockwise
-                rotated = pygame.transform.rotate(self.offscreen, 90)
+                # Rotate the offscreen canvas 180 degrees
+                rotated = pygame.transform.rotate(self.offscreen, 270)
                 
                 # Clear the visible screen
                 self.screen.fill(BLACK)
@@ -450,7 +450,7 @@ class TamagotchiWaterBottle:
                 self.draw_achievement_offscreen()
         
         # Rotate the entire offscreen canvas 90 degrees counter-clockwise
-        rotated = pygame.transform.rotate(self.offscreen, 90)
+        rotated = pygame.transform.rotate(self.offscreen, 180)
         
         # Clear the visible screen
         self.screen.fill(BLACK)
