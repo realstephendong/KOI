@@ -1,0 +1,368 @@
+#!/usr/bin/env python3
+"""
+Vertical Brick Breaker Game for Tamagotchi Water Bottle
+Uses bottle tilt for paddle control
+"""
+
+import pygame
+import random
+import math
+from config import *
+
+class BrickGame:
+    def __init__(self, screen, sensor_manager):
+        self.screen = screen
+        self.sensor_manager = sensor_manager
+        self.width = SCREEN_WIDTH
+        self.height = SCREEN_HEIGHT
+        
+        # Game state
+        self.running = True
+        self.score = 0
+        self.high_score = 0
+        self.game_over = False
+        self.paused = False
+        self.level = 1
+        
+        # Paddle settings (horizontal in vertical game)
+        self.paddle_width = 80
+        self.paddle_height = 15
+        self.paddle_x = self.width // 2 - self.paddle_width // 2
+        self.paddle_y = self.height - 50
+        self.paddle_speed = 5
+        
+        # Ball settings
+        self.ball_size = 8
+        self.ball_x = self.width // 2
+        self.ball_y = self.height - 100
+        self.ball_speed_x = 4
+        self.ball_speed_y = -4
+        self.ball_launched = False
+        
+        # Brick settings
+        self.brick_width = 60
+        self.brick_height = 20
+        self.brick_rows = 8
+        self.brick_cols = 7
+        self.bricks = []
+        self.setup_bricks()
+        
+        # Game settings
+        self.lives = 3
+        self.max_lives = 3
+        
+        # Visual effects
+        self.particles = []
+        self.score_flash_timer = 0
+        
+        # Tilt control
+        self.tilt_sensitivity = 2.0
+        self.last_tilt = 0
+        
+    def setup_bricks(self):
+        """Setup brick layout"""
+        self.bricks = []
+        start_x = 30
+        start_y = 50
+        
+        for row in range(self.brick_rows):
+            for col in range(self.brick_cols):
+                brick = {
+                    'x': start_x + col * (self.brick_width + 5),
+                    'y': start_y + row * (self.brick_height + 5),
+                    'width': self.brick_width,
+                    'height': self.brick_height,
+                    'color': self.get_brick_color(row),
+                    'active': True
+                }
+                self.bricks.append(brick)
+                
+    def get_brick_color(self, row):
+        """Get brick color based on row"""
+        colors = [WHITE, LIGHT_GRAY, GRAY, DARK_GRAY]
+        return colors[row % len(colors)]
+        
+    def handle_events(self):
+        """Handle pygame events"""
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.running = False
+                
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE or event.key == ord(BUTTON_LEFT):
+                    self.running = False
+                elif event.key == pygame.K_SPACE:
+                    if not self.ball_launched:
+                        self.launch_ball()
+                        
+    def launch_ball(self):
+        """Launch the ball from paddle"""
+        self.ball_launched = True
+        self.ball_speed_y = -4
+        self.ball_speed_x = random.uniform(-3, 3)
+        
+    def update(self, dt):
+        """Update game state"""
+        if self.paused or self.game_over:
+            return
+            
+        # Update paddle position based on tilt
+        self.update_paddle_from_tilt()
+        
+        # Update ball
+        self.update_ball()
+        
+        # Update particles
+        self.update_particles()
+        
+        # Update timers
+        self.score_flash_timer -= dt
+        
+        # Check for level completion
+        if self.check_level_complete():
+            self.next_level()
+            
+    def update_paddle_from_tilt(self):
+        """Update paddle position based on bottle tilt"""
+        sensor_data = self.sensor_manager.get_sensor_status()
+        
+        # Use tilt data to move paddle
+        if 'tilt_x' in sensor_data:
+            tilt = sensor_data['tilt_x'] * self.tilt_sensitivity
+            self.paddle_x += tilt
+            
+            # Keep paddle on screen
+            self.paddle_x = max(0, min(self.width - self.paddle_width, self.paddle_x))
+            
+    def update_ball(self):
+        """Update ball movement and collisions"""
+        if not self.ball_launched:
+            # Ball follows paddle
+            self.ball_x = self.paddle_x + self.paddle_width // 2
+            return
+            
+        # Move ball
+        self.ball_x += self.ball_speed_x
+        self.ball_y += self.ball_speed_y
+        
+        # Ball collision with left and right walls
+        if self.ball_x <= 0 or self.ball_x >= self.width - self.ball_size:
+            self.ball_speed_x = -self.ball_speed_x
+            self.add_particles(self.ball_x, self.ball_y, 'bounce')
+            
+        # Ball collision with top wall
+        if self.ball_y <= 0:
+            self.ball_speed_y = -self.ball_speed_y
+            self.add_particles(self.ball_x, self.ball_y, 'bounce')
+            
+        # Ball collision with paddle
+        if (self.ball_y >= self.paddle_y - self.ball_size and 
+            self.ball_y <= self.paddle_y + self.paddle_height and
+            self.ball_x >= self.paddle_x and 
+            self.ball_x <= self.paddle_x + self.paddle_width):
+            
+            # Calculate hit position for angle
+            hit_pos = (self.ball_x - self.paddle_x) / self.paddle_width
+            angle = (hit_pos - 0.5) * 2  # -1 to 1
+            
+            self.ball_speed_y = -abs(self.ball_speed_y)  # Always go up
+            self.ball_speed_x = angle * 6  # Angle based on hit position
+            
+            self.add_particles(self.ball_x, self.ball_y, 'hit')
+            
+        # Ball collision with bricks
+        self.check_brick_collisions()
+        
+        # Ball goes past paddle (lose life)
+        if self.ball_y >= self.height:
+            self.lose_life()
+            
+    def check_brick_collisions(self):
+        """Check ball collision with bricks"""
+        for brick in self.bricks:
+            if not brick['active']:
+                continue
+                
+            if (self.ball_x >= brick['x'] and 
+                self.ball_x <= brick['x'] + brick['width'] and
+                self.ball_y >= brick['y'] and 
+                self.ball_y <= brick['y'] + brick['height']):
+                
+                # Destroy brick
+                brick['active'] = False
+                self.score += 10
+                self.high_score = max(self.high_score, self.score)
+                self.score_flash_timer = 0.5
+                
+                # Bounce ball
+                if (self.ball_x < brick['x'] or self.ball_x > brick['x'] + brick['width']):
+                    self.ball_speed_x = -self.ball_speed_x
+                else:
+                    self.ball_speed_y = -self.ball_speed_y
+                    
+                self.add_particles(brick['x'] + brick['width']//2, 
+                                 brick['y'] + brick['height']//2, 'break')
+                break
+                
+    def lose_life(self):
+        """Lose a life and reset ball"""
+        self.lives -= 1
+        self.ball_launched = False
+        self.ball_x = self.paddle_x + self.paddle_width // 2
+        self.ball_y = self.paddle_y - self.ball_size
+        
+        if self.lives <= 0:
+            self.game_over = True
+            
+    def check_level_complete(self):
+        """Check if all bricks are destroyed"""
+        return all(not brick['active'] for brick in self.bricks)
+        
+    def next_level(self):
+        """Start next level"""
+        self.level += 1
+        self.ball_launched = False
+        self.ball_x = self.paddle_x + self.paddle_width // 2
+        self.ball_y = self.paddle_y - self.ball_size
+        
+        # Increase difficulty
+        self.ball_speed_x = min(8, self.ball_speed_x + 0.5)
+        self.ball_speed_y = min(8, abs(self.ball_speed_y) + 0.5)
+        
+        # Setup new bricks
+        self.setup_bricks()
+        
+    def add_particles(self, x, y, particle_type):
+        """Add particle effects"""
+        if len(self.particles) > 20:
+            return
+            
+        colors = {
+            'bounce': WHITE,
+            'hit': LIGHT_GRAY,
+            'break': GRAY
+        }
+        
+        for _ in range(5):
+            particle = {
+                'x': x + random.uniform(-10, 10),
+                'y': y + random.uniform(-10, 10),
+                'vx': random.uniform(-3, 3),
+                'vy': random.uniform(-3, 3),
+                'life': 30,
+                'color': colors.get(particle_type, WHITE)
+            }
+            self.particles.append(particle)
+            
+    def update_particles(self):
+        """Update particle effects"""
+        for particle in self.particles[:]:
+            particle['x'] += particle['vx']
+            particle['y'] += particle['vy']
+            particle['life'] -= 1
+            
+            if particle['life'] <= 0:
+                self.particles.remove(particle)
+                
+    def draw(self):
+        """Draw the game"""
+        # Clear screen
+        self.screen.fill(BLACK)
+        
+        # Draw bricks
+        self.draw_bricks()
+        
+        # Draw paddle
+        self.draw_paddle()
+        
+        # Draw ball
+        pygame.draw.rect(self.screen, WHITE, 
+                        (self.ball_x, self.ball_y, self.ball_size, self.ball_size))
+        
+        # Draw particles
+        self.draw_particles()
+        
+        # Draw UI
+        self.draw_ui()
+        
+        # Draw game over screen
+        if self.game_over:
+            self.draw_game_over()
+            
+    def draw_bricks(self):
+        """Draw active bricks"""
+        for brick in self.bricks:
+            if brick['active']:
+                pygame.draw.rect(self.screen, brick['color'], 
+                               (brick['x'], brick['y'], brick['width'], brick['height']))
+                pygame.draw.rect(self.screen, BLACK, 
+                               (brick['x'], brick['y'], brick['width'], brick['height']), 1)
+                
+    def draw_paddle(self):
+        """Draw paddle with pixel-art style"""
+        paddle_rect = pygame.Rect(self.paddle_x, self.paddle_y, 
+                                 self.paddle_width, self.paddle_height)
+        pygame.draw.rect(self.screen, WHITE, paddle_rect)
+        pygame.draw.rect(self.screen, BLACK, paddle_rect, 2)
+        
+        # Pixel-art highlight
+        highlight_rect = pygame.Rect(self.paddle_x + 1, self.paddle_y + 1, 
+                                   self.paddle_width - 2, self.paddle_height - 2)
+        pygame.draw.rect(self.screen, LIGHT_GRAY, highlight_rect, 1)
+        
+    def draw_particles(self):
+        """Draw particle effects"""
+        for particle in self.particles:
+            pygame.draw.circle(self.screen, particle['color'], 
+                             (int(particle['x']), int(particle['y'])), 2)
+                             
+    def draw_ui(self):
+        """Draw UI elements"""
+        font = pygame.font.Font(None, 24)
+        
+        # Draw score
+        score_color = WHITE if self.score_flash_timer <= 0 else LIGHT_GRAY
+        score_text = font.render(f"SCORE: {self.score}", True, score_color)
+        self.screen.blit(score_text, (10, 10))
+        
+        # Draw level
+        level_text = font.render(f"LEVEL: {self.level}", True, GRAY)
+        self.screen.blit(level_text, (10, 35))
+        
+        # Draw lives
+        lives_text = font.render(f"LIVES: {self.lives}", True, GRAY)
+        self.screen.blit(lives_text, (10, 60))
+        
+        # Draw controls
+        controls_font = pygame.font.Font(None, 18)
+        controls_text = controls_font.render("Tilt bottle to move paddle", True, GRAY)
+        self.screen.blit(controls_text, (10, self.height - 40))
+        
+        exit_text = controls_font.render(f"Press {BUTTON_LEFT.upper()} to exit", True, GRAY)
+        self.screen.blit(exit_text, (10, self.height - 20))
+        
+    def draw_game_over(self):
+        """Draw game over screen"""
+        # Semi-transparent overlay
+        overlay = pygame.Surface((self.width, self.height))
+        overlay.set_alpha(128)
+        overlay.fill(BLACK)
+        self.screen.blit(overlay, (0, 0))
+        
+        # Game over text
+        font = pygame.font.Font(None, 48)
+        text = font.render("GAME OVER", True, WHITE)
+        text_rect = text.get_rect(center=(self.width // 2, self.height // 2 - 50))
+        self.screen.blit(text, text_rect)
+        
+        # Final score
+        font = pygame.font.Font(None, 36)
+        score_text = font.render(f"Final Score: {self.score}", True, LIGHT_GRAY)
+        score_rect = score_text.get_rect(center=(self.width // 2, self.height // 2))
+        self.screen.blit(score_text, score_rect)
+        
+        # Instructions
+        font = pygame.font.Font(None, 24)
+        restart_text = font.render(f"Press {BUTTON_LEFT.upper()} to exit", True, GRAY)
+        restart_rect = restart_text.get_rect(center=(self.width // 2, self.height // 2 + 50))
+        self.screen.blit(restart_text, restart_rect) 

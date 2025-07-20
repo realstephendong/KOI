@@ -1,0 +1,28 @@
+# Core dependencies for Tamagotchi Water Bottle Project
+# Raspberry Pi 5 with touchscreen LCD and GY521 sensor
+
+# Game engine
+pygame>=2.5.0,<3.0.0
+
+# Sensor integration (for Raspberry Pi)
+smbus2>=0.4.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# System utilities
+psutil>=5.9.0
+
+# Optional: For development and testing
+# pytest>=7.0.0
+# pytest-cov>=4.0.0
+
+# Optional: For data logging (if needed)
+# pandas>=2.0.0
+# numpy>=1.24.0
+
+# Optional: For GPIO control on Raspberry Pi
+# RPi.GPIO>=0.7.0
+
+# Optional: For advanced sensor features
+# adafruit-circuitpython-mpu6050>=1.0.0 
