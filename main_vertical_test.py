@@ -200,6 +200,8 @@ class TamagotchiWaterBottle:
         if not self.playing_brick or not self.brick_game:
             return
             
+        current_time = time.time()
+        
         # Check for pygame quit event
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -212,7 +214,30 @@ class TamagotchiWaterBottle:
                     if not self.brick_game.ball_launched:
                         self.brick_game.launch_ball()
                         print("🎾 Ball launched via keyboard!")
+        
+        # Also check for button presses (keyboard simulation)
+        keys = pygame.key.get_pressed()
+        
+        # Handle 'A' key (yellow button equivalent) for exiting
+        if keys[pygame.K_a] and not self.yellow_button_last_state:
+            if current_time - self.last_button_press < self.button_debounce:
+                return  # Debounce
+            self.exit_brick_game()
+            self.last_button_press = current_time
             
+        # Handle 'D' key (blue button equivalent) for launching ball
+        if keys[pygame.K_d] and not self.blue_button_last_state:
+            if current_time - self.last_button_press < self.button_debounce:
+                return  # Debounce
+            if not self.brick_game.ball_launched:
+                self.brick_game.launch_ball()
+                print("🎾 Ball launched via blue button!")
+            self.last_button_press = current_time
+        
+        # Update button states
+        self.yellow_button_last_state = keys[pygame.K_a]
+        self.blue_button_last_state = keys[pygame.K_d]
+        
     def switch_mascot(self):
         """Switch between different mascots"""
         current_type = self.current_mascot.type
