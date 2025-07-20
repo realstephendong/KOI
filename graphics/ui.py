@@ -19,11 +19,11 @@ HEART_SCALE = 3
 MASCOT_SCALE = 4
 
 # Mascot positioning (locked) - UI controls this
-MASCOT_CENTER_X = DEVICE_WIDTH // 2 - 40
-MASCOT_CENTER_Y = DEVICE_HEIGHT // 2 + 60
+MASCOT_CENTER_X = (DEVICE_WIDTH // 2) + 12
+MASCOT_CENTER_Y = (DEVICE_HEIGHT // 2) - 35
 
 # HP Bar positioning (locked)
-HP_BAR_OFFSET_Y = 130  # Distance below mascot center
+HP_BAR_OFFSET_Y = 180  # Distance below mascot center
 HP_BAR_HEALTH_WIDTH = 94  # Width of health bar area within sprite
 HP_BAR_HEALTH_HEIGHT = 6  # Height of health bar area within sprite
 HP_BAR_HEALTH_X_OFFSET = 12  # X offset within HP bar sprite

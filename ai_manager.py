@@ -4,6 +4,11 @@ from config import *
 
 class AIManager:
     def __init__(self):
+        # self.pet_responses = {
+        #     "koi": []
+        # }
+
+
         # Response categories with lots of variety
         self.pet_responses = [
             "Aww, thank you! That feels so nice!",
