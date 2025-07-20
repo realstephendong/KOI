@@ -11,6 +11,7 @@ from sensor_manager import SensorManager
 from graphics.brick_game import BrickGame
 from graphics.ui import UIController
 from graphics.pet import Pet
+from gpiozero import Button
 
 # GPIO fallback for testing
 GPIO_AVAILABLE = True
