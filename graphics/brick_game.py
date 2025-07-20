@@ -51,8 +51,8 @@ class BrickGame:
         self.ball_size = 8
         self.ball_x = self.width // 2
         self.ball_y = self.height - 100
-        self.ball_speed_x = 4
-        self.ball_speed_y = -4
+        self.ball_speed_x = 12
+        self.ball_speed_y = -12
         self.ball_launched = False
         
         # Brick settings - More blocks for better gameplay
