@@ -155,9 +155,6 @@ class TamagotchiWaterBottle:
             if self.left_button_press_count == 1:
                 # Single press: Pet mascot
                 self.pet_mascot()
-            elif self.left_button_press_count == 2:
-                # Double press: Switch mascot
-                self.switch_mascot()
             elif self.left_button_press_count == 3:
                 # Triple press: Special interaction
                 self.special_mascot_interaction()
@@ -257,12 +254,20 @@ class TamagotchiWaterBottle:
         print(f"🔄 Switched mascot from {current_type} to {new_type}")
         
     def pet_selection_loop(self):
-        # Handle button presses
         if self.yellow_button_up: # select
             self.switch_mascot()
             self.yellow_button_up = False
         elif self.blue_button_up: # confirm
             self.state = "pet"
+            self.blue_button_up = False
+
+    def main_loop(self):
+        if self.yellow_button_up: # pet
+            self.pet_mascot()
+            self.yellow_button_up = False
+        elif self.blue_button_up: # game
+            self.state = "brick_game"
+            self.start_brick_game()
             self.blue_button_up = False
 
     def special_mascot_interaction(self):
@@ -591,14 +596,13 @@ class TamagotchiWaterBottle:
             dt = self.clock.tick(FPS) / 1000.0
             if (self.state == "selection"):
                 self.pet_selection_loop()
-                # self.pet.draw(self.screen, "idle")
-                self.handle_events()
-                self.update(dt)
-                self.draw()
+            elif (self.state == "pet"):
+                self.main_loop()
             else:
-                self.handle_events()
-                self.update(dt)
-                self.draw()
+                pass
+            self.handle_events()
+            self.update(dt)
+            self.draw()
             
         # Cleanup
         self.current_mascot.save_state()
