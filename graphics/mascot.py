@@ -120,7 +120,7 @@ class Mascot:
     def make_dizzy(self):
         """Handle bottle shaking"""
         self.is_dizzy = True
-        self.dizzy_timer = 5.0  # Dizzy for 5 seconds
+        self.dizzy_timer = 1.0  # Dizzy for 1 seconds
         self.current_state = MascotState.DIZZY
         self.state_timer = 0
 
