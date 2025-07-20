@@ -62,6 +62,8 @@ class TamagotchiWaterBottle:
         
         # Mascot interaction
         self.current_mascot.hearts = 0  # Hearts for mascot affection
+        if self.current_mascot.health == 0:
+            self.current_mascot.health = 100
         
         # Pet system (now only handles speech bubbles)
         self.pet = Pet()
@@ -127,11 +129,6 @@ class TamagotchiWaterBottle:
             self.custom_font_small = pygame.font.Font(None, 18)  # Fallback to default
         
     def handle_events(self):
-        # If in brick game mode, handle brick game events
-        # if self.playing_brick:
-        #     self.handle_brick_game_events()
-        #     return
-        
         # Check for pygame quit event
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -146,101 +143,7 @@ class TamagotchiWaterBottle:
                         self.yellow_button_up = True
                     if event.key == pygame.K_d:
                         self.blue_button_up = True
-        
-    # def handle_left_button_combo(self, current_time):
-    #     """Handle left button with press counting for different actions"""
-    #     # Check if this is part of a combo
-    #     if current_time - self.last_left_press_time < self.button_combo_timeout:
-    #         self.left_button_press_count += 1
-    #     else:
-    #         self.left_button_press_count = 1
-            
-    #     self.last_left_press_time = current_time
-    #     print(f"🔘 Yellow button (A key) pressed {self.left_button_press_count} times")
-        
-    #     # Handle different press counts
-    #     if self.button_mode == BUTTON_MODE_MAIN:
-    #         if self.left_button_press_count == 1:
-    #             # Single press: Pet mascot
-    #             self.pet_mascot()
-    #         elif self.left_button_press_count == 3:
-    #             # Triple press: Special interaction
-    #             self.special_mascot_interaction()
-    #     elif self.button_mode == BUTTON_MODE_BRICK:
-    #         # In brick game mode, yellow button exits the game
-    #         self.exit_brick_game()
-            
-    # def handle_right_button_combo(self, current_time):
-    #     """Handle right button with press counting for different actions"""
-    #     # Check if this is part of a combo
-    #     if current_time - self.last_right_press_time < self.button_combo_timeout:
-    #         self.right_button_press_count += 1
-    #     else:
-    #         self.right_button_press_count = 1
-            
-    #     self.last_right_press_time = current_time
-    #     print(f"🔘 Blue button (D key) pressed {self.right_button_press_count} times")
-        
-    #     # Handle different press counts
-    #     if self.button_mode == BUTTON_MODE_MAIN:
-    #         if self.right_button_press_count == 1:
-    #             # Single press: Start game
-    #             self.start_brick_game()
-    #         elif self.right_button_press_count == 2:
-    #             # Double press: Show stats
-    #             self.show_stats()
-    #         elif self.right_button_press_count == 3:
-    #             # Triple press: Settings menu
-    #             self.show_settings()
-    #     elif self.button_mode == BUTTON_MODE_BRICK:
-    #         # In brick game mode, blue button launches the ball
-    #         if self.brick_game and not self.brick_game.ball_launched:
-    #             self.brick_game.launch_ball()
-    #             print("🎾 Ball launched via blue button!")
-            
-    # def handle_brick_game_events(self):
-    #     """Handle events specifically for brick game mode"""
-    #     if not self.playing_brick or not self.brick_game:
-    #         return
-            
-    #     current_time = time.time()
-        
-    #     # Check for pygame quit event
-    #     for event in pygame.event.get():
-    #         if event.type == pygame.QUIT:
-    #             self.running = False
-    #             return
-    #         elif event.type == pygame.KEYDOWN:
-    #             if event.key == pygame.K_ESCAPE or event.key == ord(BUTTON_LEFT):
-    #                 self.exit_brick_game()
-    #             elif event.key == pygame.K_SPACE or event.key == ord(BUTTON_RIGHT):
-    #                 if not self.brick_game.ball_launched:
-    #                     self.brick_game.launch_ball()
-    #                     print("🎾 Ball launched via keyboard!")
-        
-    #     # Also check for button presses (keyboard simulation)
-    #     keys = pygame.key.get_pressed()
-        
-    #     # Handle 'A' key (yellow button equivalent) for exiting
-    #     if keys[pygame.K_a] and not self.yellow_button_last_state:
-    #         if current_time - self.last_button_press < self.button_debounce:
-    #             return  # Debounce
-    #         self.exit_brick_game()
-    #         self.last_button_press = current_time
-            
-    #     # Handle 'D' key (blue button equivalent) for launching ball
-    #     if keys[pygame.K_d] and not self.blue_button_last_state:
-    #         if current_time - self.last_button_press < self.button_debounce:
-    #             return  # Debounce
-    #         if not self.brick_game.ball_launched:
-    #             self.brick_game.launch_ball()
-    #             print("🎾 Ball launched via blue button!")
-    #         self.last_button_press = current_time
-        
-    #     # Update button states
-    #     self.yellow_button_last_state = keys[pygame.K_a]
-    #     self.blue_button_last_state = keys[pygame.K_d]
-        
+                
     def switch_mascot(self):
         """Switch between different mascots"""
         current_type = self.current_mascot.type
@@ -288,18 +191,6 @@ class TamagotchiWaterBottle:
         elif self.blue_button_up: # launch ball
             self.brick_game.launch_ball()
             self.blue_button_up = False
-        
-    # def show_stats(self):
-    #     """Show drinking statistics (double press right)"""
-    #     stats_text = f"Today's Progress:\nWater: {self.session_water}ml\nTotal: {self.total_water_drunk}ml\nGoal: {self.daily_goal}ml"
-    #     self.pet.start_speaking(stats_text)
-    #     print("📊 Showing drinking statistics")
-        
-    # def show_settings(self):
-    #     """Show settings menu (triple press right)"""
-    #     settings_text = "Settings:\n- Health decay rate\n- Button sensitivity\n- Sound effects\n- Display options"
-    #     self.pet.start_speaking(settings_text)
-    #     print("⚙️ Showing settings menu")
             
     def start_brick_game(self):
         """Start the brick breaker game"""
