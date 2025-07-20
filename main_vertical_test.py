@@ -173,25 +173,31 @@ class TamagotchiWaterBottle:
         
     def pet_selection_loop(self):
         if self.yellow_button_up: # select
+            print("switch")
             self.switch_mascot()
             self.yellow_button_up = False
         elif self.blue_button_up: # confirm
+            print("confirm")
             self.state = "pet"
             self.blue_button_up = False
 
     def main_loop(self):
         if self.yellow_button_up and self.blue_button_up:
+            print("restart")
             self.state = "selection"
         if self.yellow_button_up: # pet
+            print("pet")
             self.pet_mascot()
             self.yellow_button_up = False
         elif self.blue_button_up: # game
+            print("game")
             self.state = "brick_game"
             self.start_brick_game()
             self.blue_button_up = False
 
     def game_loop(self):
         if self.yellow_button_up: # quit
+            print("quit")
             self.state = "pet"
             self.exit_brick_game()
             self.yellow_button_up = False
