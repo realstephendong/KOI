@@ -57,7 +57,7 @@ class Mascot:
         current_time = time.time()
         
         # Update health based on time
-        if current_time - self.last_health_update >= 60:  # Every minute
+        if current_time - self.last_health_update >= 5:  # Every minute
             self.health -= self.config['health_decay_rate']
             self.health = max(0, self.health)
             self.last_health_update = current_time

@@ -8,6 +8,8 @@ from mascot import Mascot, MascotState
 from ai_manager import AIManager
 from sensor_manager import SensorManager
 from brick_game import BrickGame
+from ui import draw_ui
+from pet import Pet
 
 class TamagotchiWaterBottle:
     def __init__(self):
@@ -22,9 +24,18 @@ class TamagotchiWaterBottle:
         self.sensor_manager = SensorManager()
         self.ai_manager = AIManager()
         
-        # Mascot management
+        # Mascot management (keeping original for compatibility)
         self.current_mascot = Mascot('koi')
         self.current_mascot.load_state()
+        
+        # Mascot interaction
+        self.mascot_speaking = False
+        self.speech_text = ""
+        self.speech_timer = 0
+        self.hearts = 3  # Hearts for mascot affection
+        
+        # New Pet system (partner's implementation)
+        self.pet = Pet('koi', self.current_mascot.health, self.hearts)
         
         # Game state
         self.running = True
@@ -36,12 +47,6 @@ class TamagotchiWaterBottle:
         self.button_mode = BUTTON_MODE_MAIN
         self.last_button_press = 0
         self.button_debounce = 0.3  # Slightly longer debounce for cleaner interaction
-        
-        # Mascot interaction
-        self.mascot_speaking = False
-        self.speech_text = ""
-        self.speech_timer = 0
-        self.hearts = 3  # Hearts for mascot affection
         
         # Statistics
         self.total_water_drunk = 0
@@ -137,6 +142,9 @@ class TamagotchiWaterBottle:
             self.current_mascot.current_state = MascotState.HAPPY
             self.current_mascot.state_timer = 0
             
+            # Update pet health to match
+            self.pet.hp = self.current_mascot.health
+            
             # Mascot speaks about the game result
             context = f"User just played Brick Breaker and scored {final_score} points!"
             self.mascot_speak(self.ai_manager.generate_conversation("", "", context))
@@ -150,8 +158,12 @@ class TamagotchiWaterBottle:
         self.current_mascot.health = min(self.current_mascot.max_health, 
                                        self.current_mascot.health + 5)
         
+        # Update pet health to match
+        self.pet.hp = self.current_mascot.health
+        
         # Add hearts for affection
         self.hearts = min(5, self.hearts + 1)
+        self.pet.hearts = self.hearts
         
         # Mascot speaks directly
         if not self.mascot_speaking:
@@ -198,88 +210,69 @@ class TamagotchiWaterBottle:
                 self.particles.remove(particle)
                 
     def update_sensor_data(self):
-        """Update sensor data and handle drinking/shaking events"""
-        # Get sensor data using your sophisticated detection system
-        sensor_data = self.sensor_manager.update()
-        
-        # Handle drinking detection with precise water amount calculation
-        if sensor_data['drinking_detected']:
-            water_amount = sensor_data['water_amount']
-            if water_amount > 0:
-                self.handle_drinking(water_amount)
-                print(f"🍶 Drinking detected! Water consumed: {water_amount}ml")
+        """Update sensor data and handle drinking detection"""
+        try:
+            sensor_data = self.sensor_manager.get_sensor_data()
             
-        # Handle shaking detection
-        if sensor_data['shaking_detected']:
-            self.current_mascot.make_dizzy()
-            print("🔄 Shake detected! Mascot is dizzy!")
+            if sensor_data:
+                # Check for drinking motion
+                if sensor_data.get('drinking_detected', False):
+                    water_amount = sensor_data.get('water_amount', WATER_PER_DRINK)
+                    self.handle_drinking(water_amount)
+                    
+                # Check for bottle shaking
+                if sensor_data.get('is_shaking', False):
+                    self.current_mascot.make_dizzy()
+                    
+        except Exception as e:
+            print(f"❌ Error updating sensor data: {e}")
             
-        # Update statistics display
-        self.update_drinking_statistics()
-        
     def update_drinking_statistics(self):
-        """Update drinking statistics from sensor data"""
-        sensor_status = self.sensor_manager.get_sensor_status()
-        self.session_water = sensor_status['total_water_consumed']
+        """Update drinking statistics and achievements"""
+        # This would be called when water is consumed
+        pass
         
     def handle_drinking(self, water_amount):
         """Handle water drinking event"""
-        self.current_mascot.drink_water(water_amount)
+        self.session_water += water_amount
         self.total_water_drunk += water_amount
         
-        # Update streak
-        current_date = time.strftime('%Y-%m-%d')
-        if self.last_drink_date != current_date:
-            if self.last_drink_date:
-                # Check if it's consecutive
-                yesterday = time.strftime('%Y-%m-%d', 
-                                        time.localtime(time.time() - 86400))
-                if self.last_drink_date == yesterday:
-                    self.streak_days += 1
-                else:
-                    self.streak_days = 1
-            else:
-                self.streak_days = 1
-            self.last_drink_date = current_date
-            
-        # Generate achievement
-        if self.achievement_timer <= 0:
-            achievement = self.ai_manager.generate_achievement(water_amount, self.streak_days)
-            self.show_achievement(achievement)
-            
-        # Add water particles
+        # Update mascot health
+        self.current_mascot.drink_water(water_amount)
+        self.pet.hp = self.current_mascot.health
+        
+        # Add particles
         self.add_particles(self.current_mascot.x, self.current_mascot.y, 'water')
         
-        # Mascot speaks about drinking
-        if not self.mascot_speaking:
-            context = f"User just drank {water_amount}ml of water!"
-            self.mascot_speak(self.ai_manager.generate_conversation("", "", context))
+        # Check for achievements
+        if self.session_water >= MIN_WATER_FOR_ACHIEVEMENT and self.achievement_timer <= 0:
+            self.show_achievement(f"Great job! You drank {self.session_water}ml today!")
             
+        print(f"💧 Water consumed: {water_amount}ml (Total: {self.total_water_drunk}ml)")
+        
     def show_achievement(self, achievement_text):
         """Show achievement popup"""
         self.achievement_popup = achievement_text
-        self.achievement_timer = 5.0
+        self.achievement_timer = 3.0  # Show for 3 seconds
         
     def update(self, dt):
         """Update game state"""
-        if self.playing_brick:
-            # Update brick game
-            if self.brick_game:
-                self.brick_game.handle_events()
-                self.brick_game.update(dt)
-                if not self.brick_game.running:
-                    self.exit_brick_game()
-            return
-            
-        if self.paused:
-            return
-            
+        # Update sensor data
+        self.update_sensor_data()
+        
         # Update mascot
         self.current_mascot.update(dt)
         
-        # Update sensor data (less frequently for performance)
-        if int(time.time() * 10) % 2 == 0:  # Update every 0.2 seconds instead of every frame
-            self.update_sensor_data()
+        # Update pet animation
+        animation_state = "idle"
+        if self.current_mascot.current_state == MascotState.HAPPY:
+            animation_state = "happy"
+        elif self.current_mascot.current_state == MascotState.DRINKING:
+            animation_state = "drinking"
+        elif self.current_mascot.current_state == MascotState.SAD:
+            animation_state = "sad"
+            
+        self.pet.update(dt, animation_state)
         
         # Update particles
         self.update_particles()
@@ -296,7 +289,7 @@ class TamagotchiWaterBottle:
             self.current_mascot.save_state()
             
     def draw(self):
-        """Draw everything to screen"""
+        """Draw everything to screen using partner's UI system"""
         if self.playing_brick:
             # Draw brick game
             if self.brick_game:
@@ -307,11 +300,12 @@ class TamagotchiWaterBottle:
         # Clear screen
         self.screen.fill(BLACK)
         
-        # Draw mascot
-        self.current_mascot.draw(self.screen)
+        # Draw pet sprite (partner's implementation)
+        self.pet.draw(self.screen, "idle")
         
-        # Draw hearts
-        self.draw_hearts()
+        # Draw UI elements (partner's implementation)
+        health_percentage = (self.current_mascot.health / self.current_mascot.max_health) * 100
+        draw_ui(self.screen, self.hearts, health_percentage)
         
         # Draw particles
         self.draw_particles()
@@ -326,29 +320,6 @@ class TamagotchiWaterBottle:
             
         # Update display
         pygame.display.flip()
-        
-    def draw_hearts(self):
-        """Draw hearts for mascot affection (vertical layout)"""
-        heart_size = 20
-        heart_spacing = 25
-        heart_x = SCREEN_WIDTH - 30
-        start_y = 20
-        
-        for i in range(self.hearts):
-            heart_y = start_y + (i * heart_spacing)
-            self.draw_heart(heart_x, heart_y, heart_size)
-            
-    def draw_heart(self, x, y, size):
-        """Draw a single heart"""
-        points = [
-            (x, y + size//2),
-            (x - size//2, y),
-            (x - size//2, y - size//2),
-            (x, y - size),
-            (x + size//2, y - size//2),
-            (x + size//2, y),
-        ]
-        pygame.draw.polygon(self.screen, WHITE, points)
         
     def draw_particles(self):
         """Draw particle effects"""
@@ -399,8 +370,8 @@ class TamagotchiWaterBottle:
         # Draw speech bubble
         bubble_width = max_width + 30
         bubble_height = len(lines) * 25 + 15
-        bubble_x = self.current_mascot.x - bubble_width // 2
-        bubble_y = self.current_mascot.y - self.current_mascot.size // 2 - bubble_height - 20
+        bubble_x = self.pet.x - bubble_width // 2  # Center relative to pet
+        bubble_y = self.pet.y - bubble_height - 50  # Position above pet
         
         # Keep bubble on screen
         if bubble_x < 10:
@@ -415,7 +386,7 @@ class TamagotchiWaterBottle:
         pygame.draw.rect(self.screen, BLACK, bubble_rect, 2)
         
         # Draw speech bubble tail
-        tail_x = self.current_mascot.x
+        tail_x = self.pet.x
         tail_y = bubble_y + bubble_height
         tail_points = [
             (tail_x, tail_y),

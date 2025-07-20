@@ -57,7 +57,7 @@ MASCOTS = {
         'personality': 'energetic and playful',
         'favorite_food': 'water drops',
         'base_health': 100,
-        'health_decay_rate': 0.5  # per minute
+        'health_decay_rate': 10  # per minute
     },
     'soy': {
         'name': 'Soy',
@@ -65,7 +65,7 @@ MASCOTS = {
         'personality': 'calm and caring',
         'favorite_food': 'water bubbles',
         'base_health': 100,
-        'health_decay_rate': 0.3  # per minute
+        'health_decay_rate': 10  # per minute
     }
 }
 
