@@ -13,7 +13,7 @@ from graphics.ui import UIController
 from graphics.pet import Pet
 
 # GPIO fallback for testing
-GPIO_AVAILABLE = True
+GPIO_AVAILABLE = False
 print("⌨️  Testing vertical orientation on MacBook")
 print("   Press 'A' for yellow button (pet), 'D' for blue button (game)")
 
@@ -71,6 +71,7 @@ class TamagotchiWaterBottle:
         
         # Mascot management
         self.current_mascot = Mascot('koi')
+        self.ai_manager.current_pet = 'koi'
         self.current_mascot.load_state()
         
         # Mascot interaction
@@ -172,6 +173,7 @@ class TamagotchiWaterBottle:
         
         # Create new mascot
         self.current_mascot = Mascot(new_type)
+        self.ai_manager.current_pet = new_type
         self.current_mascot.load_state()
         
         # Mascot speaks about the switch
