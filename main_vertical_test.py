@@ -4,7 +4,7 @@ import time
 import math
 import random
 import os
-from config_raspberry_pi import *  # Use the vertical dimensions
+from config import *  # Use the vertical dimensions
 from graphics.mascot import Mascot, MascotState
 from ai_manager import AIManager
 from sensor_manager import SensorManager
