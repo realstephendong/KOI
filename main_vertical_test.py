@@ -21,17 +21,25 @@ class TamagotchiWaterBottle:
     def __init__(self):
         pygame.init()
         
-        # Set up display with vertical orientation for testing
-        # Physical screen dimensions (what the user sees)
+        # Detect if running on Raspberry Pi
+        import platform
+        is_raspberry_pi = platform.system() == "Linux" and os.path.exists("/proc/cpuinfo")
+        
+        # Set up display with vertical orientation for testing or fullscreen for Pi
         self.DEVICE_WIDTH = 1024   # Physical screen width
         self.DEVICE_HEIGHT = 600   # Physical screen height
-        
-        # Application canvas dimensions (what we draw on)
         self.APP_WIDTH = 600       # App width (will be rotated)
         self.APP_HEIGHT = 1024     # App height (will be rotated)
         
-        # Create the visible screen
-        self.screen = pygame.display.set_mode((self.DEVICE_WIDTH, self.DEVICE_HEIGHT))
+        if is_raspberry_pi:
+            os.environ['SDL_VIDEODRIVER'] = 'fbcon'
+            os.environ['SDL_FBDEV'] = '/dev/fb0'
+            os.environ['SDL_NOMOUSE'] = '1'
+            self.screen = pygame.display.set_mode((self.DEVICE_WIDTH, self.DEVICE_HEIGHT), pygame.FULLSCREEN)
+            print("🔧 Raspberry Pi detected - Using fullscreen mode")
+        else:
+            self.screen = pygame.display.set_mode((self.DEVICE_WIDTH, self.DEVICE_HEIGHT))
+            print("💻 Desktop mode detected")
         
         # Create the offscreen canvas for drawing
         self.offscreen = pygame.Surface((self.APP_WIDTH, self.APP_HEIGHT))
