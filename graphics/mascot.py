@@ -59,7 +59,7 @@ class Mascot:
 
         if self.health == 0:
             self.kill()
-        elif self.health < 40:
+        elif self.health <= 40:
             self.make_sad()
         else:
             self.make_idle()
@@ -108,7 +108,9 @@ class Mascot:
     def make_sad(self):
         """Make sad"""
         self.current_state = MascotState.SAD
-        self.hearts = max(0, self.hearts - 1)
+
+        if self.health == 40:
+            self.hearts = max(0, self.hearts - 1)
     
     def make_idle(self):
         """Make idel"""
