@@ -3,9 +3,13 @@ from PIL import Image
 from PIL import ImageDraw
 from graphics.pet import Pet
 from luma.core.render import canvas
+from gpiozero import Button
 
 USE_EMULATOR = True
 FPS = 1
+
+yellow_button = Button(17)
+blue_button = Button(27)
 
 def setup():
     if USE_EMULATOR:
@@ -51,6 +55,9 @@ def run_loop(device):
     koi = create_pet(pet_choice)
 
     while True:
+        print("Yellow ", yellow_button.is_pressed)
+        print("Blue ", blue_button.is_pressed)
+        
         image = Image.new("1", (device.width, device.height))
 
         koi.draw(image, "idle")
