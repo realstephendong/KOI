@@ -637,15 +637,35 @@ class TamagotchiWaterBottle:
         text = font.render(self.achievement_popup, True, BLACK)
         text_rect = text.get_rect(center=(box_rect.centerx, box_rect.y + 50))
         self.screen.blit(text, text_rect)
+
+    def pet_selection_loop(self):
+
+        # Handle button presses
+        if self.yellow_button_pressed: # select
+            print("yellow")
+            self.switch_mascot()
+            
+        if self.blue_button_pressed: # confirm
+            print("blue")
+            self.switch_mascot()
+            self.state = "pet"
+
+        self.pet.draw(self.screen, "idle")
             
     def run(self):
         """Main game loop"""
+        self.state = "selection"
+        
         while self.running:
             dt = self.clock.tick(FPS) / 1000.0
             
-            self.handle_events()
-            self.update(dt)
-            self.draw()
+            if (self.state == "selection"):
+                self.pet_selection_loop()
+                self.pet.draw(self.screen, "idle")
+            elif (self.state == "pet"):
+                self.handle_events()
+                self.update(dt)
+                self.draw()
             
         # Cleanup
         self.current_mascot.save_state()
