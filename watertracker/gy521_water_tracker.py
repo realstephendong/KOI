@@ -80,47 +80,88 @@ class GY521WaterTracker:
         addresses = [0x68, 0x69]  # Try both possible addresses
         
         print("Initializing I2C connection...")
+        print("Note: If 'Resource temporarily unavailable' error occurs, retrying...")
         
-        # Try different combinations of bus and address
+        # Try different combinations of bus and address with retry logic
         success = False
+        max_retries = 3
+        
         for bus_num in i2c_buses:
-            for addr in addresses:
-                try:
-                    print(f"Trying I2C bus {bus_num} with address 0x{addr:02X}...")
-                    test_bus = smbus.SMBus(bus_num)
-                    
-                    # Test communication by reading WHO_AM_I register
-                    who_am_i = test_bus.read_byte_data(addr, 0x75)
-                    print(f"WHO_AM_I register: 0x{who_am_i:02X}")
-                    
-                    if who_am_i == 0x68:
-                        print(f"✅ MPU6050 found on I2C bus {bus_num} at address 0x{addr:02X}")
-                        self.bus = test_bus
-                        self.MPU6050_ADDR = addr
-                        success = True
-                        break
-                    else:
-                        test_bus.close()
-                        
-                except Exception as e:
-                    print(f"   Failed: {e}")
-                    try:
-                        test_bus.close()
-                    except:
-                        pass
-            
             if success:
                 break
+                
+            for addr in addresses:
+                if success:
+                    break
+                    
+                for retry in range(max_retries):
+                    try:
+                        if retry > 0:
+                            print(f"Retry {retry + 1}/{max_retries} for I2C bus {bus_num} address 0x{addr:02X}...")
+                            time.sleep(0.5)  # Wait before retry
+                        else:
+                            print(f"Trying I2C bus {bus_num} with address 0x{addr:02X}...")
+                        
+                        # Close any existing bus connection first
+                        try:
+                            test_bus = smbus.SMBus(bus_num)
+                            time.sleep(0.1)  # Small delay after opening
+                            
+                            # Test communication by reading WHO_AM_I register with timeout protection
+                            who_am_i = test_bus.read_byte_data(addr, 0x75)
+                            print(f"WHO_AM_I register: 0x{who_am_i:02X}")
+                            
+                            if who_am_i == 0x68:
+                                print(f"✅ MPU6050 found on I2C bus {bus_num} at address 0x{addr:02X}")
+                                self.bus = test_bus
+                                self.MPU6050_ADDR = addr
+                                success = True
+                                break
+                            else:
+                                print(f"⚠️  Device found but unexpected WHO_AM_I: 0x{who_am_i:02X}")
+                                test_bus.close()
+                                time.sleep(0.1)
+                                
+                        except OSError as e:
+                            if e.errno == 11:  # Resource temporarily unavailable
+                                print(f"   I2C busy (errno 11), waiting and retrying...")
+                                try:
+                                    test_bus.close()
+                                except:
+                                    pass
+                                time.sleep(1.0)  # Wait longer for busy resource
+                                continue
+                            else:
+                                print(f"   Failed: {e}")
+                                try:
+                                    test_bus.close()
+                                except:
+                                    pass
+                                break
+                        except Exception as e:
+                            print(f"   Failed: {e}")
+                            try:
+                                test_bus.close()
+                            except:
+                                pass
+                            break
+                    except Exception as e:
+                        print(f"   Bus creation failed: {e}")
+                        continue
         
         if not self.bus:
             print("\n❌ Failed to initialize I2C communication with MPU6050")
-            print("\nTroubleshooting steps:")
-            print("1. Check wiring connections")
-            print("2. Enable I2C: sudo raspi-config -> Interface Options -> I2C")
-            print("3. Install I2C tools: sudo apt install i2c-tools python3-smbus")
-            print("4. Scan for devices: sudo i2cdetect -y 1")
-            print("5. Add user to i2c group: sudo usermod -a -G i2c $USER")
-            print("6. Reboot and try again")
+            print("\nThe 'Resource temporarily unavailable' error suggests:")
+            print("1. Another process is using I2C (check for other sensor programs)")
+            print("2. I2C bus may be locked - try these steps:")
+            print("   sudo systemctl stop any-i2c-services")
+            print("   sudo rmmod i2c_dev && sudo modprobe i2c_dev")
+            print("   sudo reboot")
+            print("3. Check for conflicting processes:")
+            print("   sudo lsof /dev/i2c-1")
+            print("   ps aux | grep i2c")
+            print("4. Disable other I2C services temporarily:")
+            print("   sudo systemctl disable any-sensor-services")
             raise Exception("I2C initialization failed - see troubleshooting steps above")
         
         # Initialize MPU6050
