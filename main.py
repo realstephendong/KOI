@@ -55,9 +55,9 @@ def run_loop(device):
     koi = create_pet(pet_choice)
 
     while True:
-        print("Yellow ", yellow_button.is_pressed)
-        print("Blue ", blue_button.is_pressed)
-        
+        print("Yellow ", yellow_button.value)
+        print("Blue ", blue_button.value)
+
         image = Image.new("1", (device.width, device.height))
 
         koi.draw(image, "idle")
