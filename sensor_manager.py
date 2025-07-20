@@ -53,9 +53,9 @@ class SensorManager:
         self.NOISE_THRESHOLD = 5.0        # Minimum change to consider real movement
         
         # Water consumption calculation constants (IMPROVED VALUES)
-        self.BASE_FLOW_RATE = 0.5         # Base flow rate (ml per second at 45 degrees)
-        self.ANGLE_MULTIPLIER = 0.3       # Flow rate multiplier per 10 degrees of tilt
-        self.MAX_FLOW_RATE = 8.0          # Maximum flow rate (ml per second)
+        self.BASE_FLOW_RATE = 2.0         # Base flow rate (ml per second at 45 degrees) - increased for bigger measurement
+        self.ANGLE_MULTIPLIER = 0.5       # Flow rate multiplier per 10 degrees of tilt - slightly more aggressive
+        self.MAX_FLOW_RATE = 20.0         # Maximum flow rate (ml per second) - increased for bigger measurement
         
         # Sensor data
         self.accel_x = 0.0
@@ -323,9 +323,9 @@ class SensorManager:
         # Calculate water consumed in this time interval
         water_consumed = flow_rate * time_elapsed
         
-        # More reasonable safety check - limit to 5ml per update
-        if water_consumed > 5.0:
-            water_consumed = 5.0
+        # More reasonable safety check - limit to 20ml per update (increased)
+        if water_consumed > 20.0:
+            water_consumed = 20.0
         
         return water_consumed
     
