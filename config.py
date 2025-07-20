@@ -6,7 +6,7 @@ load_dotenv()
 # Screen Configuration - Vertical Mounting
 SCREEN_WIDTH = 480   # Rotated from 800
 SCREEN_HEIGHT = 800  # Rotated from 600
-FPS = 60
+FPS = 15
 
 # Colors - Black and White Theme
 WHITE = (255, 255, 255)

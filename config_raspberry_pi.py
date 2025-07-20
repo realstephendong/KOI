@@ -8,7 +8,7 @@ load_dotenv()
 # This will display sideways/tilted on the physical screen
 SCREEN_WIDTH = 600   # Vertical width (will be the height on screen)
 SCREEN_HEIGHT = 1024 # Vertical height (will be the width on screen)
-FPS = 15
+FPS = 60
 
 # Colors - Black and White Theme
 WHITE = (255, 255, 255)
