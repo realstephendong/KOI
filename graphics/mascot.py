@@ -8,13 +8,9 @@ from config import *
 
 class MascotState(Enum):
     IDLE = "idle"
-    DRINKING = "drinking"
-    HAPPY = "happy"
     SAD = "sad"
-    SLEEPING = "sleeping"
-    PLAYING = "playing"
     DIZZY = "dizzy"
-    EATING = "eating"
+    DEATH = "death"
 
 class Mascot:
     def __init__(self, mascot_type='koi'):
@@ -36,7 +32,7 @@ class Mascot:
         self.animation_speed = 0.1
         
         # Emotions and reactions
-        self.emotion = 'happy'
+        self.emotion = 'idle'
         self.reaction_timer = 0
         self.is_dizzy = False
         self.dizzy_timer = 0
@@ -90,10 +86,7 @@ class Mascot:
         self.hydration_level = min(100, self.hydration_level + amount)
         self.last_drink_time = time.time()
         
-        # Trigger happy reaction
-        self.current_state = MascotState.DRINKING
         self.state_timer = 0
-        self.reaction_timer = 3.0  # Show reaction for 3 seconds
         
     def make_dizzy(self):
         """Handle bottle shaking"""
@@ -118,11 +111,6 @@ class Mascot:
             
     def update_state_transitions(self):
         """Handle automatic state transitions"""
-        if self.current_state == MascotState.DRINKING and self.state_timer > 2:
-            self.current_state = MascotState.HAPPY
-            
-        if self.current_state == MascotState.HAPPY and self.state_timer > 3:
-            self.current_state = MascotState.IDLE
             
         if self.current_state == MascotState.DIZZY and self.dizzy_timer <= 0:
             self.current_state = MascotState.IDLE
@@ -143,122 +131,6 @@ class Mascot:
             if health_percentage >= data['min']:
                 return data['color']
         return RED
-        
-    def draw(self, screen):
-        """Draw the mascot with pixel-art style"""
-        # Draw mascot body with pixel-art style
-        body_rect = pygame.Rect(self.x - self.size // 2, self.y - self.size // 2, 
-                               self.size, self.size)
-        
-        # Draw body with border
-        pygame.draw.rect(screen, self.config['color'], body_rect)
-        pygame.draw.rect(screen, BLACK, body_rect, 2)
-        
-        # Draw pixel-art details based on state
-        if self.current_state == MascotState.HAPPY:
-            self.draw_happy_face(screen)
-        elif self.current_state == MascotState.SAD:
-            self.draw_sad_face(screen)
-        elif self.current_state == MascotState.PLAYING:
-            self.draw_playing_face(screen)
-        elif self.current_state == MascotState.DIZZY:
-            self.draw_dizzy_face(screen)
-        else:
-            self.draw_normal_face(screen)
-            
-        # Draw health bar with pixel-art style
-        self.draw_health_bar(screen)
-        
-    def draw_normal_face(self, screen):
-        """Draw normal face with pixel-art style"""
-        # Eyes
-        eye_size = 4
-        left_eye_x = self.x - 8
-        right_eye_x = self.x + 8
-        eye_y = self.y - 5
-        
-        pygame.draw.rect(screen, BLACK, (left_eye_x, eye_y, eye_size, eye_size))
-        pygame.draw.rect(screen, BLACK, (right_eye_x, eye_y, eye_size, eye_size))
-        
-        # Mouth (small line)
-        mouth_y = self.y + 8
-        pygame.draw.line(screen, BLACK, (self.x - 6, mouth_y), (self.x + 6, mouth_y), 2)
-        
-    def draw_happy_face(self, screen):
-        """Draw happy face with pixel-art style"""
-        # Eyes
-        eye_size = 4
-        left_eye_x = self.x - 8
-        right_eye_x = self.x + 8
-        eye_y = self.y - 5
-        
-        pygame.draw.rect(screen, BLACK, (left_eye_x, eye_y, eye_size, eye_size))
-        pygame.draw.rect(screen, BLACK, (right_eye_x, eye_y, eye_size, eye_size))
-        
-        # Happy mouth (curve)
-        mouth_points = [
-            (self.x - 8, self.y + 8),
-            (self.x - 4, self.y + 12),
-            (self.x, self.y + 10),
-            (self.x + 4, self.y + 12),
-            (self.x + 8, self.y + 8)
-        ]
-        pygame.draw.lines(screen, BLACK, False, mouth_points, 2)
-        
-    def draw_sad_face(self, screen):
-        """Draw sad face with pixel-art style"""
-        # Eyes
-        eye_size = 4
-        left_eye_x = self.x - 8
-        right_eye_x = self.x + 8
-        eye_y = self.y - 5
-        
-        pygame.draw.rect(screen, BLACK, (left_eye_x, eye_y, eye_size, eye_size))
-        pygame.draw.rect(screen, BLACK, (right_eye_x, eye_y, eye_size, eye_size))
-        
-        # Sad mouth (inverted curve)
-        mouth_points = [
-            (self.x - 8, self.y + 12),
-            (self.x - 4, self.y + 8),
-            (self.x, self.y + 10),
-            (self.x + 4, self.y + 8),
-            (self.x + 8, self.y + 12)
-        ]
-        pygame.draw.lines(screen, BLACK, False, mouth_points, 2)
-        
-    def draw_playing_face(self, screen):
-        """Draw playing face with pixel-art style"""
-        # Eyes (squinted)
-        eye_size = 2
-        left_eye_x = self.x - 8
-        right_eye_x = self.x + 8
-        eye_y = self.y - 4
-        
-        pygame.draw.rect(screen, BLACK, (left_eye_x, eye_y, eye_size, eye_size))
-        pygame.draw.rect(screen, BLACK, (right_eye_x, eye_y, eye_size, eye_size))
-        
-        # Excited mouth (wide)
-        mouth_y = self.y + 8
-        pygame.draw.line(screen, BLACK, (self.x - 10, mouth_y), (self.x + 10, mouth_y), 3)
-        
-    def draw_dizzy_face(self, screen):
-        """Draw dizzy face with pixel-art style"""
-        # Swirling eyes
-        eye_size = 3
-        left_eye_x = self.x - 8
-        right_eye_x = self.x + 8
-        eye_y = self.y - 5
-        
-        # Draw X eyes
-        pygame.draw.line(screen, BLACK, (left_eye_x, eye_y), (left_eye_x + eye_size, eye_y + eye_size), 2)
-        pygame.draw.line(screen, BLACK, (left_eye_x + eye_size, eye_y), (left_eye_x, eye_y + eye_size), 2)
-        
-        pygame.draw.line(screen, BLACK, (right_eye_x, eye_y), (right_eye_x + eye_size, eye_y + eye_size), 2)
-        pygame.draw.line(screen, BLACK, (right_eye_x + eye_size, eye_y), (right_eye_x, eye_y + eye_size), 2)
-        
-        # Confused mouth
-        mouth_y = self.y + 8
-        pygame.draw.line(screen, BLACK, (self.x - 4, mouth_y), (self.x + 4, mouth_y), 2)
         
     def draw_health_bar(self, screen):
         """Draw health bar with pixel-art style"""

@@ -6,7 +6,7 @@ load_dotenv()
 # Screen Configuration - Vertical Mounting
 SCREEN_WIDTH = 480   # Rotated from 800
 SCREEN_HEIGHT = 800  # Rotated from 600
-FPS = 60
+FPS = 1
 
 # Colors - Black and White Theme
 WHITE = (255, 255, 255)
@@ -23,14 +23,6 @@ RED = BLACK
 YELLOW = WHITE
 PINK = LIGHT_GRAY
 PURPLE = DARK_GRAY
-
-# UI Configuration
-UI_PADDING = 20
-BUTTON_HEIGHT = 35
-BUTTON_WIDTH = 80
-BUTTON_SPACING = 10
-STATS_PANEL_WIDTH = 300
-STATS_PANEL_HEIGHT = 200
 
 # Pixel Art Style
 PIXEL_SIZE = 2

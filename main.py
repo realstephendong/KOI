@@ -5,12 +5,12 @@ import math
 import random
 import os
 from config import *
-from mascot import Mascot, MascotState
+from graphics.mascot import Mascot, MascotState
 from ai_manager import AIManager
 from sensor_manager import SensorManager
-from brick_game import BrickGame
-from ui import draw_ui
-from pet import Pet
+from graphics.brick_game import BrickGame
+from graphics.ui import draw_ui
+from graphics.pet import Pet
 
 # Try to import GPIO for Raspberry Pi, fallback to keyboard for testing
 try:
@@ -242,6 +242,8 @@ class TamagotchiWaterBottle:
         current_type = self.current_mascot.type
         if current_type == 'koi':
             new_type = 'soy'
+        elif current_type == 'soy':
+            new_type = 'joy'
         else:
             new_type = 'koi'
             
@@ -259,28 +261,6 @@ class TamagotchiWaterBottle:
         self.mascot_speak(f"Hi! I'm {self.current_mascot.name}! Nice to meet you!")
         
         print(f"🔄 Switched mascot from {current_type} to {new_type}")
-        
-    def special_mascot_interaction(self):
-        """Special interaction with mascot (triple press)"""
-        # Give extra health and hearts
-        self.current_mascot.health = min(self.current_mascot.max_health, 
-                                       self.current_mascot.health + 15)
-        self.pet.hp = self.current_mascot.health
-        
-        self.hearts = min(5, self.hearts + 2)
-        self.pet.hearts = self.hearts
-        
-        # Special state
-        self.current_mascot.current_state = MascotState.HAPPY
-        self.current_mascot.state_timer = 0
-        
-        # Add special particles
-        self.add_particles(self.current_mascot.x, self.current_mascot.y, 'sparkle')
-        
-        # Special message
-        self.mascot_speak("Wow! You really love me! Thank you for the special attention!")
-        
-        print("✨ Special mascot interaction triggered!")
         
     def show_stats(self):
         """Show drinking statistics (double press right)"""
@@ -332,7 +312,7 @@ class TamagotchiWaterBottle:
             happiness_boost = min(20, final_score // 10)
             self.current_mascot.health = min(self.current_mascot.max_health, 
                                            self.current_mascot.health + happiness_boost)
-            self.current_mascot.current_state = MascotState.HAPPY
+            self.current_mascot.current_state = MascotState.IDLE
             self.current_mascot.state_timer = 0
             
             # Update pet health to match
@@ -346,16 +326,11 @@ class TamagotchiWaterBottle:
             
     def pet_mascot(self):
         """Pet the mascot for positive interaction"""
-        self.current_mascot.current_state = MascotState.HAPPY
+        self.current_mascot.current_state = MascotState.IDLE
         self.current_mascot.state_timer = 0
-        self.current_mascot.health = min(self.current_mascot.max_health, 
-                                       self.current_mascot.health + 5)
-        
-        # Update pet health to match
-        self.pet.hp = self.current_mascot.health
         
         # Add hearts for affection
-        self.hearts = min(5, self.hearts + 1)
+        self.hearts = min(3, self.hearts + 1)
         self.pet.hearts = self.hearts
         
         # Mascot speaks directly
@@ -460,12 +435,12 @@ class TamagotchiWaterBottle:
         
         # Update pet animation
         animation_state = "idle"
-        if self.current_mascot.current_state == MascotState.HAPPY:
-            animation_state = "happy"
-        elif self.current_mascot.current_state == MascotState.DRINKING:
-            animation_state = "drinking"
-        elif self.current_mascot.current_state == MascotState.SAD:
+        if self.current_mascot.current_state == MascotState.SAD:
             animation_state = "sad"
+        elif self.current_mascot.current_state == MascotState.DIZZY:
+            animation_state = "dizzy"
+        elif self.current_mascot.current_state == MascotState.DEATH:
+            animation_state = "DEATH"
             
         self.pet.update(dt, animation_state)
         

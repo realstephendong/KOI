@@ -27,53 +27,56 @@ class Pet:
             if self.mascot_type == 'koi':
                 idle0 = pygame.image.load("./assets/koi/koi_idle0.png").convert_alpha()
                 idle1 = pygame.image.load("./assets/koi/koi_idle1.png").convert_alpha()
+                sad0 = pygame.image.load("./assets/koi/koi_sad0.png").convert_alpha()
+                sad1 = pygame.image.load("./assets/koi/koi_sad1.png").convert_alpha()
+                dizzy = pygame.image.load("./assets/koi/koi_confused.png").convert_alpha()
+                death = pygame.image.load("./assets/koi/koi_death.png").convert_alpha()
             elif self.mascot_type == 'soy':
                 idle0 = pygame.image.load("./assets/soy/soy_idle0.png").convert_alpha()
                 idle1 = pygame.image.load("./assets/soy/soy_idle1.png").convert_alpha()
+                sad0 = pygame.image.load("./assets/soy/soy_sad0.png").convert_alpha()
+                sad1 = pygame.image.load("./assets/soy/soy_sad1.png").convert_alpha()
+                dizzy = pygame.image.load("./assets/soy/soy_confused.png").convert_alpha()
+                death = pygame.image.load("./assets/soy/soy_death.png").convert_alpha()
+            elif self.mascot_type == 'joy':
+                idle0 = pygame.image.load("./assets/joy/joy_idle0.png").convert_alpha()
+                idle1 = pygame.image.load("./assets/joy/joy_idle1.png").convert_alpha()
+                sad0 = pygame.image.load("./assets/joy/joy_sad0.png").convert_alpha()
+                sad1 = pygame.image.load("./assets/joy/joy_sad1.png").convert_alpha()
+                dizzy = pygame.image.load("./assets/joy/joy_confused.png").convert_alpha()
+                death = pygame.image.load("./assets/joy/joy_death.png").convert_alpha()
             else:
                 # Fallback to koi if unknown type
                 idle0 = pygame.image.load("./assets/koi/koi_idle0.png").convert_alpha()
                 idle1 = pygame.image.load("./assets/koi/koi_idle1.png").convert_alpha()
+                sad0 = pygame.image.load("./assets/koi/koi_sad0.png").convert_alpha()
+                sad1 = pygame.image.load("./assets/koi/koi_sad1.png").convert_alpha()
+                dizzy = pygame.image.load("./assets/koi/koi_confused.png").convert_alpha()
+                death = pygame.image.load("./assets/koi/koi_death.png").convert_alpha()
 
             # Scale up the sprites
             scaled_idle0 = pygame.transform.scale(idle0, 
                 (idle0.get_width() * self.scale_factor, idle0.get_height() * self.scale_factor))
             scaled_idle1 = pygame.transform.scale(idle1, 
                 (idle1.get_width() * self.scale_factor, idle1.get_height() * self.scale_factor))
+            scaled_sad0 = pygame.transform.scale(sad0, 
+                (idle1.get_width() * self.scale_factor, sad0.get_height() * self.scale_factor))
+            scaled_sad1 = pygame.transform.scale(sad1, 
+                (idle1.get_width() * self.scale_factor, sad1.get_height() * self.scale_factor))
+            scaled_dizzy = pygame.transform.scale(dizzy, 
+                (idle1.get_width() * self.scale_factor, dizzy.get_height() * self.scale_factor))
+            scaled_death = pygame.transform.scale(death, 
+                (idle1.get_width() * self.scale_factor, death.get_height() * self.scale_factor))
 
             self.images = {
                 "idle": [scaled_idle0, scaled_idle1],
-                "happy": [scaled_idle0, scaled_idle1],  # Use idle for now, can be expanded
-                "sad": [scaled_idle0, scaled_idle1],    # Use idle for now, can be expanded
-                "drinking": [scaled_idle0, scaled_idle1] # Use idle for now, can be expanded
+                "sad": [scaled_sad0, scaled_sad1],
+                "dizzy": [scaled_dizzy],
+                "death": [scaled_death]
             }
             
         except pygame.error as e:
             print(f"Error loading mascot sprites: {e}")
-            # Create fallback sprites
-            self.create_fallback_sprites()
-
-    def create_fallback_sprites(self):
-        """Create simple fallback sprites if image loading fails"""
-        # Create simple colored rectangles as fallback (scaled up)
-        fallback_sprite = pygame.Surface((50 * self.scale_factor, 50 * self.scale_factor))
-        if self.mascot_type == 'koi':
-            fallback_sprite.fill((255, 255, 255))  # White for koi
-        else:
-            fallback_sprite.fill((200, 200, 200))  # Gray for soy
-        
-        # Add simple face (scaled)
-        face_scale = self.scale_factor
-        pygame.draw.rect(fallback_sprite, (0, 0, 0), (15 * face_scale, 15 * face_scale, 5 * face_scale, 5 * face_scale))  # Left eye
-        pygame.draw.rect(fallback_sprite, (0, 0, 0), (30 * face_scale, 15 * face_scale, 5 * face_scale, 5 * face_scale))  # Right eye
-        pygame.draw.rect(fallback_sprite, (0, 0, 0), (20 * face_scale, 30 * face_scale, 10 * face_scale, 3 * face_scale))  # Mouth
-        
-        self.images = {
-            "idle": [fallback_sprite, fallback_sprite],
-            "happy": [fallback_sprite, fallback_sprite],
-            "sad": [fallback_sprite, fallback_sprite],
-            "drinking": [fallback_sprite, fallback_sprite]
-        }
 
     def update(self, dt, animation_state="idle"):
         """Update pet animation"""
