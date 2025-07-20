@@ -83,10 +83,32 @@ DRINKING_THRESHOLD = 45  # degrees
 DRINKING_DURATION = 2.0  # seconds
 WATER_PER_DRINK = 10  # ml
 
-# AI Configuration
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+# Local AI Response Configuration
 AI_UPDATE_INTERVAL = 300  # 5 minutes
+SPEECH_DURATION = 4.0  # seconds to show speech bubble
+
+# Game Configuration
+BRICK_GAME_LIVES = 3
+BRICK_GAME_BALL_SPEED = 5
+BRICK_GAME_PADDLE_SPEED = 8
+BRICK_GAME_TILT_SENSITIVITY = 0.5
 
 # File Paths
 ASSETS_DIR = 'assets'
-SAVE_FILE = 'mascot_save.json' 
+SAVE_FILE = 'mascot_save.json'
+CALIBRATION_FILE = 'sensor_calibration.json'
+
+# Sensor Configuration
+SENSOR_UPDATE_RATE = 60  # Hz
+SENSOR_SIMULATION_MODE = True  # Set to False on Raspberry Pi
+MPU6050_ADDRESS = 0x68
+SMBUS_BUS = 1
+
+# Particle Effects
+MAX_PARTICLES = 20
+PARTICLE_LIFETIME = 60  # frames
+PARTICLE_SPEED = 3
+
+# Achievement System
+ACHIEVEMENT_COOLDOWN = 300  # seconds between achievements
+MIN_WATER_FOR_ACHIEVEMENT = 50  # ml 
