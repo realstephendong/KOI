@@ -92,7 +92,7 @@ class SensorManager:
         self.last_session_amount = 0.0
         
         # Shake detection
-        self.shake_threshold = 1.2
+        self.shake_threshold = 1.5
         self.shake_window_size = 5
         self.accel_history = []
         self._shake_printed = False
@@ -336,12 +336,12 @@ class SensorManager:
         if session_duration >= self.MIN_DRINKING_TIME:
             print("Drinking session ended!")
             print(f"Session duration: {session_duration:.1f} seconds")
-            print(f"Water consumed this session: {self.session_water_consumed:.1f} ml")
+            print(f"Water consumed this session: {round(self.session_water_consumed)} ml")
             print(f"Total water consumed: {self.total_water_consumed:.1f} ml")
             print()
             # --- Set session end flag and amount ---
             self.just_ended_drinking = True
-            self.last_session_amount = self.session_water_consumed
+            self.last_session_amount = int(round(self.session_water_consumed))
         
         self.is_drinking = False
         self.session_water_consumed = 0.0

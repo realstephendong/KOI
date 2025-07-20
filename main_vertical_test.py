@@ -537,7 +537,7 @@ class TamagotchiWaterBottle:
         """Draw achievement popup on offscreen canvas with pixel-art style"""
         if not self.achievement_popup:
             return
-            
+        
         # Draw achievement box with pixel-art style
         box_width = 300  # Smaller for vertical layout
         box_height = 100
@@ -554,15 +554,24 @@ class TamagotchiWaterBottle:
         highlight_rect = pygame.Rect(box_x + 3, box_y + 3, box_width - 6, box_height - 6)
         pygame.draw.rect(self.offscreen, LIGHT_GRAY, highlight_rect, 1)
         
-        # Draw title
-        font = pygame.font.Font(None, 24)
-        text = font.render("ACHIEVEMENT!", True, BLACK)
+        # Draw title with custom font
+        font_path = os.path.join("assets", "fonts", "Delicatus-e9OLl.ttf")
+        try:
+            title_font = pygame.font.Font(font_path, 28)
+        except Exception as e:
+            print(f"Error loading custom font: {e}")
+            title_font = pygame.font.Font(None, 28)
+        text = title_font.render("ACHIEVEMENT!", True, BLACK)
         text_rect = text.get_rect(center=(box_rect.centerx, box_rect.y + 20))
         self.offscreen.blit(text, text_rect)
         
-        # Draw achievement text
-        font = pygame.font.Font(None, 16)
-        text = font.render(self.achievement_popup, True, BLACK)
+        # Draw achievement text with custom font
+        try:
+            body_font = pygame.font.Font(font_path, 20)
+        except Exception as e:
+            print(f"Error loading custom font: {e}")
+            body_font = pygame.font.Font(None, 20)
+        text = body_font.render(self.achievement_popup, True, BLACK)
         text_rect = text.get_rect(center=(box_rect.centerx, box_rect.y + 50))
         self.offscreen.blit(text, text_rect)
             

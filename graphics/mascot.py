@@ -42,7 +42,7 @@ class Mascot:
         # Drinking state
         self.is_drinking = False
         self.drinking_amount_left = 0
-        self.drinking_rate = 10  # units per second (adjust as needed)
+        self.drinking_rate = 20  # units per second (adjust as needed)
         self.drinking_total = 0
         
         # AI-generated features
