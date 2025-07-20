@@ -4,7 +4,7 @@ from PIL import ImageDraw
 from graphics.pet import Pet
 from luma.core.render import canvas
 
-USE_EMULATOR = False
+USE_EMULATOR = True
 FPS = 1
 
 def setup():
