@@ -43,6 +43,7 @@ class TamagotchiWaterBottle:
         
         # Initialize components
         self.sensor_manager = SensorManager()
+        self.sensor_manager.shake_threshold = 0.5  # Lower threshold for more sensitive shake detection
         self.ai_manager = AIManager()
         self.ui_controller = UIController()  # New UI controller
         
@@ -371,14 +372,15 @@ class TamagotchiWaterBottle:
     def update_sensor_data(self):
         """Update sensor data and handle drinking detection"""
         try:
-            # Update the sensor manager
-            self.sensor_manager.update()
+            # Update the sensor manager and get result dict
+            sensor_data = self.sensor_manager.update()
 
-            # Check for end of drinking session
-            if not self.sensor_manager.is_currently_drinking() and self.sensor_manager.get_session_water_consumed() > 0:
-                water_amount = self.sensor_manager.get_session_water_consumed()
-                self.handle_drinking(water_amount)
-                self.sensor_manager.session_water_consumed = 0.0
+            # Check for end of drinking session using just_ended_drinking flag
+            if sensor_data.get('just_ended_drinking', False):
+                water_amount = sensor_data.get('last_session_amount', 0)
+                if water_amount > 0:
+                    self.handle_drinking(water_amount)
+                self.sensor_manager.just_ended_drinking = False  # Reset flag
 
             # Check for bottle shaking
             if self.sensor_manager.is_shaking:
