@@ -13,7 +13,7 @@ from graphics.ui import UIController
 from graphics.pet import Pet
 
 # GPIO fallback for testing
-GPIO_AVAILABLE = False
+GPIO_AVAILABLE = True
 print("⌨️  Testing vertical orientation on MacBook")
 print("   Press 'A' for yellow button (pet), 'D' for blue button (game)")
 
