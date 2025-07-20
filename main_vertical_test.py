@@ -48,8 +48,13 @@ class TamagotchiWaterBottle:
         self.ui_controller = UIController()  # New UI controller
         
         # Fallback to keyboard for testing
-        self.yellow_button = None
-        self.blue_button = None
+        if (GPIO_AVAILABLE):
+            self.yellow_button = Button(17)
+            self.blue_button = Button(27)
+        else:
+            self.yellow_button = None
+            self.blue_button = None
+            
         self.yellow_button_pressed = False
         self.blue_button_pressed = False
         self.yellow_button_up = False # set to true and then false immediately
