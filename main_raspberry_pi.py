@@ -328,7 +328,7 @@ class TamagotchiWaterBottle:
             happiness_boost = min(20, final_score // 10)
             self.current_mascot.health = min(self.current_mascot.max_health, 
                                            self.current_mascot.health + happiness_boost)
-            self.current_mascot.current_state = MascotState.HAPPY
+            self.current_mascot.current_state = MascotState.IDLE
             self.current_mascot.state_timer = 0
             
             # Mascot speaks about the game result
@@ -339,7 +339,7 @@ class TamagotchiWaterBottle:
             
     def pet_mascot(self):
         """Pet the mascot for positive interaction"""
-        self.current_mascot.current_state = MascotState.HAPPY
+        self.current_mascot.current_state = MascotState.IDLE
         self.current_mascot.state_timer = 0
         self.current_mascot.health = min(self.current_mascot.max_health, 
                                        self.current_mascot.health + 5)
