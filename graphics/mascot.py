@@ -107,13 +107,14 @@ class Mascot:
     
     def make_sad(self):
         """Make sad"""
-        self.current_state = MascotState.SAD
 
-        if self.health == 40:
+        if self.current_state != MascotState.SAD:
             self.hearts = max(0, self.hearts - 1)
+
+        self.current_state = MascotState.SAD
     
     def make_idle(self):
-        """Make idel"""
+        """Make idle"""
         self.current_state = MascotState.IDLE
         
     def update_animation(self, dt):
