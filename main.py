@@ -128,6 +128,11 @@ class TamagotchiWaterBottle:
         """Handle input events (GPIO or keyboard)"""
         current_time = time.time()
         
+        # If in brick game mode, handle brick game events
+        if self.playing_brick:
+            self.handle_brick_game_events()
+            return
+        
         # Check for pygame quit event
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -206,6 +211,7 @@ class TamagotchiWaterBottle:
                 # Triple press: Special interaction
                 self.special_mascot_interaction()
         elif self.button_mode == BUTTON_MODE_BRICK:
+            # In brick game mode, yellow button exits the game
             self.exit_brick_game()
             
     def handle_right_button_combo(self, current_time):
@@ -231,6 +237,71 @@ class TamagotchiWaterBottle:
             elif self.right_button_press_count == 3:
                 # Triple press: Settings menu
                 self.show_settings()
+        elif self.button_mode == BUTTON_MODE_BRICK:
+            # In brick game mode, blue button launches the ball
+            if self.brick_game and not self.brick_game.ball_launched:
+                self.brick_game.launch_ball()
+                print("🎾 Ball launched via blue button!")
+            
+    def handle_brick_game_events(self):
+        """Handle events specifically for brick game mode"""
+        if not self.playing_brick or not self.brick_game:
+            return
+            
+        current_time = time.time()
+        
+        # Check for pygame quit event
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.running = False
+                return
+            # Removed keyboard controls since user doesn't have keyboard
+            # All controls are handled via button press detection
+        
+        # Check for button presses based on available hardware
+        if GPIO_AVAILABLE:
+            # Handle yellow button (GPIO 17) for exiting
+            if self.yellow_button.is_pressed and not self.yellow_button_last_state:
+                if current_time - self.last_button_press < self.button_debounce:
+                    return  # Debounce
+                self.exit_brick_game()
+                self.last_button_press = current_time
+                
+            # Handle blue button (GPIO 27) for launching ball
+            if self.blue_button.is_pressed and not self.blue_button_last_state:
+                if current_time - self.last_button_press < self.button_debounce:
+                    return  # Debounce
+                if not self.brick_game.ball_launched:
+                    self.brick_game.launch_ball()
+                    print("🎾 Ball launched via blue button!")
+                self.last_button_press = current_time
+            
+            # Update button states
+            self.yellow_button_last_state = self.yellow_button.is_pressed
+            self.blue_button_last_state = self.blue_button.is_pressed
+        else:
+            # Handle keyboard simulation
+            keys = pygame.key.get_pressed()
+            
+            # Handle 'A' key (yellow button equivalent) for exiting
+            if keys[pygame.K_a] and not self.yellow_button_last_state:
+                if current_time - self.last_button_press < self.button_debounce:
+                    return  # Debounce
+                self.exit_brick_game()
+                self.last_button_press = current_time
+                
+            # Handle 'D' key (blue button equivalent) for launching ball
+            if keys[pygame.K_d] and not self.blue_button_last_state:
+                if current_time - self.last_button_press < self.button_debounce:
+                    return  # Debounce
+                if not self.brick_game.ball_launched:
+                    self.brick_game.launch_ball()
+                    print("🎾 Ball launched via blue button!")
+                self.last_button_press = current_time
+            
+            # Update button states
+            self.yellow_button_last_state = keys[pygame.K_a]
+            self.blue_button_last_state = keys[pygame.K_d]
             
     def switch_mascot(self):
         """Switch between different mascots"""
@@ -272,7 +343,9 @@ class TamagotchiWaterBottle:
         try:
             self.playing_brick = True
             self.button_mode = BUTTON_MODE_BRICK
-            self.brick_game = BrickGame(self.screen, self.sensor_manager)
+            # Pass the screen and dimensions for horizontal orientation
+            # Set test_mode=False for button-only controls
+            self.brick_game = BrickGame(self.screen, self.sensor_manager, SCREEN_WIDTH, SCREEN_HEIGHT, test_mode=False)
             
             # Mascot speaks about the game
             self.pet.start_speaking(self.ai_manager.generate_random_feature("", "", 100))
@@ -522,15 +595,35 @@ class TamagotchiWaterBottle:
         text = font.render(self.achievement_popup, True, BLACK)
         text_rect = text.get_rect(center=(box_rect.centerx, box_rect.y + 50))
         self.screen.blit(text, text_rect)
+
+    def pet_selection_loop(self):
+
+        # Handle button presses
+        if self.yellow_button_pressed: # select
+            print("yellow")
+            self.switch_mascot()
+            
+        if self.blue_button_pressed: # confirm
+            print("blue")
+            self.switch_mascot()
+            self.state = "pet"
+
+        self.pet.draw(self.screen, "idle")
             
     def run(self):
         """Main game loop"""
+        self.state = "selection"
+        
         while self.running:
             dt = self.clock.tick(FPS) / 1000.0
             
-            self.handle_events()
-            self.update(dt)
-            self.draw()
+            if (self.state == "selection"):
+                self.pet_selection_loop()
+                self.pet.draw(self.screen, "idle")
+            elif (self.state == "pet"):
+                self.handle_events()
+                self.update(dt)
+                self.draw()
             
         # Cleanup
         self.current_mascot.save_state()

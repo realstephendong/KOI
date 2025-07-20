@@ -7,14 +7,30 @@ Uses bottle tilt for paddle control
 import pygame
 import random
 import math
+import time
+import os
 from config import *
 
 class BrickGame:
-    def __init__(self, screen, sensor_manager):
+    def __init__(self, screen, sensor_manager, app_width=600, app_height=1024, test_mode=False):
         self.screen = screen
         self.sensor_manager = sensor_manager
-        self.width = SCREEN_WIDTH
-        self.height = SCREEN_HEIGHT
+        self.test_mode = test_mode  # Track if we're in test mode
+        
+        # Use provided dimensions or fallback to config
+        self.width = app_width if app_width else SCREEN_WIDTH
+        self.height = app_height if app_height else SCREEN_HEIGHT
+        
+        print(f"🎮 Brick game initialized with dimensions: {self.width}x{self.height}")
+        if test_mode:
+            print("🧪 Running in TEST MODE with keyboard controls")
+        else:
+            print("📱 Running in DEVICE MODE with button-only controls")
+        
+        # Load custom font
+        self.custom_font = None
+        self.custom_font_small = None
+        self.load_custom_font()
         
         # Game state
         self.running = True
@@ -39,11 +55,11 @@ class BrickGame:
         self.ball_speed_y = -4
         self.ball_launched = False
         
-        # Brick settings
-        self.brick_width = 60
-        self.brick_height = 20
-        self.brick_rows = 8
-        self.brick_cols = 7
+        # Brick settings - More blocks for better gameplay
+        self.brick_width = 50  # Smaller bricks to fit more
+        self.brick_height = 18
+        self.brick_rows = 12   # More rows
+        self.brick_cols = 10   # More columns
         self.bricks = []
         self.setup_bricks()
         
@@ -56,20 +72,53 @@ class BrickGame:
         self.score_flash_timer = 0
         
         # Tilt control
-        self.tilt_sensitivity = 2.0
+        self.tilt_sensitivity = 0.3  # Much less sensitive (was 2.0)
         self.last_tilt = 0
+        
+        # Game loop timing
+        self.last_update = pygame.time.get_ticks()
+        
+        # Auto-launch timer (launch ball after 2 seconds if not manually launched)
+        self.auto_launch_timer = 2.0
+        
+    def load_custom_font(self):
+        """Load the custom TTF font from assets/fonts"""
+        try:
+            font_path = os.path.join("assets", "fonts", "Delicatus-e9OLl.ttf")
+            if os.path.exists(font_path):
+                self.custom_font = pygame.font.Font(font_path, 24)
+                self.custom_font_small = pygame.font.Font(font_path, 18)
+                print(f"✅ Loaded custom font for brick game: {font_path}")
+            else:
+                print(f"⚠️  Custom font not found: {font_path}")
+                self.custom_font = pygame.font.Font(None, 24)  # Fallback to default
+                self.custom_font_small = pygame.font.Font(None, 18)  # Fallback to default
+        except Exception as e:
+            print(f"❌ Error loading custom font: {e}")
+            self.custom_font = pygame.font.Font(None, 24)  # Fallback to default
+            self.custom_font_small = pygame.font.Font(None, 18)  # Fallback to default
         
     def setup_bricks(self):
         """Setup brick layout"""
         self.bricks = []
-        start_x = 30
-        start_y = 50
+        
+        # Calculate spacing to fit all bricks
+        total_brick_width = self.brick_cols * self.brick_width
+        total_brick_height = self.brick_rows * self.brick_height
+        
+        # Calculate margins to center the brick layout
+        margin_x = (self.width - total_brick_width) // 2
+        margin_y = 80  # Increased top margin from 50 to 80 to move bricks down
+        
+        # Add some spacing between bricks
+        brick_spacing_x = 2
+        brick_spacing_y = 2
         
         for row in range(self.brick_rows):
             for col in range(self.brick_cols):
                 brick = {
-                    'x': start_x + col * (self.brick_width + 5),
-                    'y': start_y + row * (self.brick_height + 5),
+                    'x': margin_x + col * (self.brick_width + brick_spacing_x),
+                    'y': margin_y + row * (self.brick_height + brick_spacing_y),
                     'width': self.brick_width,
                     'height': self.brick_height,
                     'color': self.get_brick_color(row),
@@ -77,6 +126,8 @@ class BrickGame:
                 }
                 self.bricks.append(brick)
                 
+        print(f"🧱 Created {len(self.bricks)} bricks ({self.brick_rows} rows × {self.brick_cols} columns)")
+        
     def get_brick_color(self, row):
         """Get brick color based on row"""
         colors = [WHITE, LIGHT_GRAY, GRAY, DARK_GRAY]
@@ -91,20 +142,28 @@ class BrickGame:
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE or event.key == ord(BUTTON_LEFT):
                     self.running = False
-                elif event.key == pygame.K_SPACE:
+                elif event.key == pygame.K_SPACE or event.key == ord(BUTTON_RIGHT):
                     if not self.ball_launched:
                         self.launch_ball()
-                        
+            
     def launch_ball(self):
         """Launch the ball from paddle"""
-        self.ball_launched = True
-        self.ball_speed_y = -4
-        self.ball_speed_x = random.uniform(-3, 3)
-        
+        if not self.ball_launched:
+            self.ball_launched = True
+            self.ball_speed_y = -4
+            self.ball_speed_x = random.uniform(-3, 3)
+            print("🎾 Ball launched!")
+            
     def update(self, dt):
         """Update game state"""
         if self.paused or self.game_over:
             return
+            
+        # Update auto-launch timer
+        if not self.ball_launched:
+            self.auto_launch_timer -= dt
+            if self.auto_launch_timer <= 0:
+                self.launch_ball()
             
         # Update paddle position based on tilt
         self.update_paddle_from_tilt()
@@ -211,6 +270,9 @@ class BrickGame:
         self.ball_x = self.paddle_x + self.paddle_width // 2
         self.ball_y = self.paddle_y - self.ball_size
         
+        # Reset auto-launch timer
+        self.auto_launch_timer = 2.0
+        
         if self.lives <= 0:
             self.game_over = True
             
@@ -224,6 +286,9 @@ class BrickGame:
         self.ball_launched = False
         self.ball_x = self.paddle_x + self.paddle_width // 2
         self.ball_y = self.paddle_y - self.ball_size
+        
+        # Reset auto-launch timer
+        self.auto_launch_timer = 2.0
         
         # Increase difficulty
         self.ball_speed_x = min(8, self.ball_speed_x + 0.5)
@@ -266,6 +331,17 @@ class BrickGame:
                 
     def draw(self):
         """Draw the game"""
+        # Calculate delta time
+        current_time = pygame.time.get_ticks()
+        dt = (current_time - self.last_update) / 1000.0
+        self.last_update = current_time
+        
+        # Update game state
+        self.update(dt)
+        
+        # Handle events
+        self.handle_events()
+        
         # Clear screen
         self.screen.fill(BLACK)
         
@@ -318,31 +394,58 @@ class BrickGame:
                              
     def draw_ui(self):
         """Draw UI elements"""
-        font = pygame.font.Font(None, 24)
+        # Use custom font if available, otherwise fallback to default
+        font = self.custom_font if self.custom_font else pygame.font.Font(None, 24)
+        controls_font = self.custom_font_small if self.custom_font_small else pygame.font.Font(None, 18)
         
-        # Draw score
+        # Draw score, level, and lives in a horizontal row at the top
         score_color = WHITE if self.score_flash_timer <= 0 else LIGHT_GRAY
         score_text = font.render(f"SCORE: {self.score}", True, score_color)
-        self.screen.blit(score_text, (10, 10))
-        
-        # Draw level
         level_text = font.render(f"LEVEL: {self.level}", True, GRAY)
-        self.screen.blit(level_text, (10, 35))
-        
-        # Draw lives
         lives_text = font.render(f"LIVES: {self.lives}", True, GRAY)
-        self.screen.blit(lives_text, (10, 60))
         
-        # Draw controls
-        controls_font = pygame.font.Font(None, 18)
+        # Calculate positions for horizontal layout
+        score_x = 10
+        level_x = score_x + score_text.get_width() + 30
+        lives_x = level_x + level_text.get_width() + 30
+        
+        # Draw the three elements in a row
+        self.screen.blit(score_text, (score_x, 10))
+        self.screen.blit(level_text, (level_x, 10))
+        self.screen.blit(lives_text, (lives_x, 10))
+        
+        # Draw controls in top-right corner (smaller and out of the way)
         controls_text = controls_font.render("Tilt bottle to move paddle", True, GRAY)
-        self.screen.blit(controls_text, (10, self.height - 40))
+        controls_x = self.width - controls_text.get_width() - 10
+        self.screen.blit(controls_text, (controls_x, 10))
         
-        exit_text = controls_font.render(f"Press {BUTTON_LEFT.upper()} to exit", True, GRAY)
-        self.screen.blit(exit_text, (10, self.height - 20))
+        # Draw launch instructions in bottom-left corner (away from paddle)
+        if not self.ball_launched:
+            if self.test_mode:
+                launch_text = controls_font.render("Press blue button or SPACE to launch ball", True, WHITE)
+            else:
+                launch_text = controls_font.render("Press blue button to launch ball", True, WHITE)
+            self.screen.blit(launch_text, (10, self.height - 30))
+            
+            # Show auto-launch countdown in bottom-left corner
+            if self.auto_launch_timer > 0:
+                countdown_text = controls_font.render(f"Auto-launch in {self.auto_launch_timer:.1f}s", True, LIGHT_GRAY)
+                self.screen.blit(countdown_text, (10, self.height - 15))
+        else:
+            # Draw exit instructions in top-left corner (small and out of the way)
+            if self.test_mode:
+                exit_text = controls_font.render("Press yellow button or ESC to exit", True, GRAY)
+            else:
+                exit_text = controls_font.render("Press yellow button to exit", True, GRAY)
+            self.screen.blit(exit_text, (10, 35))
         
     def draw_game_over(self):
         """Draw game over screen"""
+        # Use custom font if available, otherwise fallback to default
+        font_large = self.custom_font if self.custom_font else pygame.font.Font(None, 36)
+        font = self.custom_font if self.custom_font else pygame.font.Font(None, 24)
+        font_small = self.custom_font_small if self.custom_font_small else pygame.font.Font(None, 18)
+        
         # Semi-transparent overlay
         overlay = pygame.Surface((self.width, self.height))
         overlay.set_alpha(128)
@@ -350,19 +453,27 @@ class BrickGame:
         self.screen.blit(overlay, (0, 0))
         
         # Game over text
-        font = pygame.font.Font(None, 48)
-        text = font.render("GAME OVER", True, WHITE)
-        text_rect = text.get_rect(center=(self.width // 2, self.height // 2 - 50))
-        self.screen.blit(text, text_rect)
+        game_over_text = font_large.render("GAME OVER", True, WHITE)
+        text_rect = game_over_text.get_rect(center=(self.width // 2, self.height // 2 - 50))
+        self.screen.blit(game_over_text, text_rect)
         
         # Final score
-        font = pygame.font.Font(None, 36)
         score_text = font.render(f"Final Score: {self.score}", True, LIGHT_GRAY)
         score_rect = score_text.get_rect(center=(self.width // 2, self.height // 2))
         self.screen.blit(score_text, score_rect)
         
+        # High score
+        if self.score >= self.high_score:
+            high_score_text = font.render("NEW HIGH SCORE!", True, WHITE)
+        else:
+            high_score_text = font.render(f"High Score: {self.high_score}", True, GRAY)
+        high_score_rect = high_score_text.get_rect(center=(self.width // 2, self.height // 2 + 30))
+        self.screen.blit(high_score_text, high_score_rect)
+        
         # Instructions
-        font = pygame.font.Font(None, 24)
-        restart_text = font.render(f"Press {BUTTON_LEFT.upper()} to exit", True, GRAY)
-        restart_rect = restart_text.get_rect(center=(self.width // 2, self.height // 2 + 50))
-        self.screen.blit(restart_text, restart_rect) 
+        if self.test_mode:
+            exit_text = font_small.render("Press yellow button or ESC to exit", True, GRAY)
+        else:
+            exit_text = font_small.render("Press yellow button to exit", True, GRAY)
+        exit_rect = exit_text.get_rect(center=(self.width // 2, self.height // 2 + 80))
+        self.screen.blit(exit_text, exit_rect) 

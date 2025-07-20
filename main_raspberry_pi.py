@@ -123,6 +123,11 @@ class TamagotchiWaterBottle:
         """Handle GPIO button input"""
         current_time = time.time()
         
+        # If in brick game mode, handle brick game events
+        if self.playing_brick:
+            self.handle_brick_game_events()
+            return
+        
         # Check for pygame quit event
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -170,6 +175,7 @@ class TamagotchiWaterBottle:
                 # Triple press: Special interaction
                 self.special_mascot_interaction()
         elif self.button_mode == BUTTON_MODE_BRICK:
+            # In brick game mode, yellow button exits the game
             self.exit_brick_game()
             
     def handle_right_button_combo(self, current_time):
@@ -194,7 +200,48 @@ class TamagotchiWaterBottle:
             elif self.right_button_press_count == 3:
                 # Triple press: Settings menu
                 self.show_settings()
+        elif self.button_mode == BUTTON_MODE_BRICK:
+            # In brick game mode, blue button launches the ball
+            if self.brick_game and not self.brick_game.ball_launched:
+                self.brick_game.launch_ball()
+                print("🎾 Ball launched via blue button!")
             
+    def handle_brick_game_events(self):
+        """Handle events specifically for brick game mode"""
+        if not self.playing_brick or not self.brick_game:
+            return
+            
+        current_time = time.time()
+        
+        # Check for pygame quit event
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.running = False
+                return
+            # Removed keyboard controls since user doesn't have keyboard
+            # All controls are handled via button press detection
+        
+        # Check for button presses (GPIO)
+        # Handle yellow button (GPIO 17) for exiting
+        if self.yellow_button.is_pressed and not self.yellow_button_last_state:
+            if current_time - self.last_button_press < self.button_debounce:
+                return  # Debounce
+            self.exit_brick_game()
+            self.last_button_press = current_time
+            
+        # Handle blue button (GPIO 27) for launching ball
+        if self.blue_button.is_pressed and not self.blue_button_last_state:
+            if current_time - self.last_button_press < self.button_debounce:
+                return  # Debounce
+            if not self.brick_game.ball_launched:
+                self.brick_game.launch_ball()
+                print("🎾 Ball launched via blue button!")
+            self.last_button_press = current_time
+        
+        # Update button states
+        self.yellow_button_last_state = self.yellow_button.is_pressed
+        self.blue_button_last_state = self.blue_button.is_pressed
+        
     def switch_mascot(self):
         """Switch between different mascots"""
         current_type = self.current_mascot.type
@@ -254,7 +301,9 @@ class TamagotchiWaterBottle:
         try:
             self.playing_brick = True
             self.button_mode = BUTTON_MODE_BRICK
-            self.brick_game = BrickGame(self.screen, self.sensor_manager)
+            # Pass the offscreen canvas and correct dimensions for vertical orientation
+            # Set test_mode=False for button-only controls
+            self.brick_game = BrickGame(self.offscreen, self.sensor_manager, self.APP_WIDTH, self.APP_HEIGHT, test_mode=False)
             
             # Mascot speaks about the game
             self.pet.start_speaking(self.ai_manager.generate_random_feature("", "", 100))
@@ -415,9 +464,23 @@ class TamagotchiWaterBottle:
     def draw(self):
         """Draw everything to offscreen canvas, rotate, then display"""
         if self.playing_brick:
-            # Draw brick game
+            # Draw brick game on offscreen canvas
             if self.brick_game:
                 self.brick_game.draw()
+                
+                # Rotate the offscreen canvas 90 degrees counter-clockwise
+                rotated = pygame.transform.rotate(self.offscreen, 90)
+                
+                # Clear the visible screen
+                self.screen.fill(BLACK)
+                
+                # Center the rotated canvas on the screen
+                rotated_rect = rotated.get_rect()
+                rotated_rect.center = (self.DEVICE_WIDTH // 2, self.DEVICE_HEIGHT // 2)
+                
+                # Blit the rotated canvas to the visible screen
+                self.screen.blit(rotated, rotated_rect)
+                
                 pygame.display.flip()
             return
             
