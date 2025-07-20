@@ -51,6 +51,8 @@ class TamagotchiWaterBottle:
         self.blue_button = None
         self.yellow_button_pressed = False
         self.blue_button_pressed = False
+        self.yellow_button_up = False # set to true and then false immediately
+        self.blue_button_up = False # set to true and then false immediately
         self.yellow_button_last_state = False
         self.blue_button_last_state = False
         print("⌨️  Using keyboard controls: 'A' (pet), 'D' (game)")
@@ -70,6 +72,7 @@ class TamagotchiWaterBottle:
         self.paused = False
         self.playing_brick = False
         self.brick_game = None
+        self.state = "selection"
         
         # Button system
         self.button_mode = BUTTON_MODE_MAIN
@@ -106,40 +109,25 @@ class TamagotchiWaterBottle:
         print(f"📍 Mascot positioned at ({mascot_x}, {mascot_y})")
         
     def handle_events(self):
-        """Handle keyboard input with press counting for testing"""
-        current_time = time.time()
-        
         # If in brick game mode, handle brick game events
-        if self.playing_brick:
-            self.handle_brick_game_events()
-            return
+        # if self.playing_brick:
+        #     self.handle_brick_game_events()
+        #     return
         
         # Check for pygame quit event
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
                 return
-        
-        # Keyboard fallback for testing
-        keys = pygame.key.get_pressed()
-        
-        # Handle 'A' key (yellow button equivalent)
-        if keys[pygame.K_a] and not self.yellow_button_last_state:
-            if current_time - self.last_button_press < self.button_debounce:
-                return  # Debounce
-            self.handle_left_button_combo(current_time)
-            self.last_button_press = current_time
-            
-        # Handle 'D' key (blue button equivalent)
-        if keys[pygame.K_d] and not self.blue_button_last_state:
-            if current_time - self.last_button_press < self.button_debounce:
-                return  # Debounce
-            self.handle_right_button_combo(current_time)
-            self.last_button_press = current_time
-        
-        # Update button states
-        self.yellow_button_last_state = keys[pygame.K_a]
-        self.blue_button_last_state = keys[pygame.K_d]
+            if (GPIO_AVAILABLE):
+                self.yellow_button.when_released = lambda: setattr(self, 'blue_button_up', True)
+                self.blue_button.when_released = lambda: setattr(self, 'blue_button_up', True)
+            else:
+                if event.type == pygame.KEYUP:
+                    if event.key == pygame.K_a:
+                        self.yellow_button_up = True
+                    if event.key == pygame.K_d:
+                        self.blue_button_up = True
         
     def handle_left_button_combo(self, current_time):
         """Handle left button with press counting for different actions"""
@@ -157,9 +145,6 @@ class TamagotchiWaterBottle:
             if self.left_button_press_count == 1:
                 # Single press: Pet mascot
                 self.pet_mascot()
-            elif self.left_button_press_count == 2:
-                # Double press: Switch mascot
-                self.switch_mascot()
             elif self.left_button_press_count == 3:
                 # Triple press: Special interaction
                 self.special_mascot_interaction()
@@ -258,6 +243,32 @@ class TamagotchiWaterBottle:
         
         print(f"🔄 Switched mascot from {current_type} to {new_type}")
         
+    def pet_selection_loop(self):
+        if self.yellow_button_up: # select
+            self.switch_mascot()
+            self.yellow_button_up = False
+        elif self.blue_button_up: # confirm
+            self.state = "pet"
+            self.blue_button_up = False
+
+    def main_loop(self):
+        if self.yellow_button_up: # pet
+            self.pet_mascot()
+            self.yellow_button_up = False
+        elif self.blue_button_up: # game
+            self.state = "brick_game"
+            self.start_brick_game()
+            self.blue_button_up = False
+
+    def game_loop(self):
+        if self.yellow_button_up: # quit
+            self.state = "pet"
+            self.exit_brick_game()
+            self.yellow_button_up = False
+        elif self.blue_button_up: # launch ball
+            self.brick_game.launch_ball()
+            self.blue_button_up = False
+
     def special_mascot_interaction(self):
         """Special interaction with mascot (triple press)"""
         # Give extra health and hearts
@@ -582,7 +593,12 @@ class TamagotchiWaterBottle:
         """Main game loop"""
         while self.running:
             dt = self.clock.tick(FPS) / 1000.0
-            
+            if (self.state == "selection"):
+                self.pet_selection_loop()
+            elif (self.state == "pet"):
+                self.main_loop()
+            elif (self.state == "brick_game"):
+                self.game_loop()
             self.handle_events()
             self.update(dt)
             self.draw()
