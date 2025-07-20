@@ -11,6 +11,16 @@ from brick_game import BrickGame
 from ui import draw_ui
 from pet import Pet
 
+# Try to import GPIO for Raspberry Pi, fallback to keyboard for testing
+try:
+    from gpiozero import Button
+    GPIO_AVAILABLE = True
+    print("🔌 GPIO library found - Running on Raspberry Pi")
+except ImportError:
+    GPIO_AVAILABLE = False
+    print("⌨️  GPIO library not found - Using keyboard controls for testing")
+    print("   Press 'A' for yellow button (pet), 'D' for blue button (game)")
+
 class TamagotchiWaterBottle:
     def __init__(self):
         pygame.init()
@@ -23,6 +33,28 @@ class TamagotchiWaterBottle:
         # Initialize components
         self.sensor_manager = SensorManager()
         self.ai_manager = AIManager()
+        
+        # Initialize buttons based on available hardware
+        if GPIO_AVAILABLE:
+            # Raspberry Pi GPIO buttons
+            self.yellow_button = Button(17)  # Left button (pet)
+            self.blue_button = Button(27)    # Right button (game)
+            
+            # Button state tracking
+            self.yellow_button_pressed = False
+            self.blue_button_pressed = False
+            self.yellow_button_last_state = False
+            self.blue_button_last_state = False
+            print("🔌 GPIO buttons initialized: Yellow (GPIO 17), Blue (GPIO 27)")
+        else:
+            # Fallback to keyboard for testing
+            self.yellow_button = None
+            self.blue_button = None
+            self.yellow_button_pressed = False
+            self.blue_button_pressed = False
+            self.yellow_button_last_state = False
+            self.blue_button_last_state = False
+            print("⌨️  Using keyboard controls: 'A' (pet), 'D' (game)")
         
         # Mascot management (keeping original for compatibility)
         self.current_mascot = Mascot('koi')
@@ -71,35 +103,65 @@ class TamagotchiWaterBottle:
         # Sensor status
         self.sensor_status = self.sensor_manager.get_sensor_status()
         print(f"🎯 Sensor initialized: {'Connected' if self.sensor_status['connected'] else 'Simulation Mode'}")
-        print(f"🎮 Button controls: {BUTTON_LEFT} (pet) and {BUTTON_RIGHT} (game)")
+        print(f"🎮 GPIO Button controls: Yellow (GPIO 17) for pet, Blue (GPIO 27) for game")
         
     def handle_events(self):
-        """Handle pygame events for button input with press counting"""
+        """Handle button input with press counting - supports both GPIO and keyboard"""
+        current_time = time.time()
+        
+        # Check for pygame quit event
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
-                
-            elif event.type == pygame.KEYDOWN:
-                current_time = time.time()
-                
-                # Only process button presses if enough time has passed for debounce
+                return
+        
+        if GPIO_AVAILABLE:
+            # Raspberry Pi GPIO button handling
+            yellow_current = self.yellow_button.value
+            blue_current = self.blue_button.value
+            
+            # Handle yellow button (left/pet button)
+            if yellow_current and not self.yellow_button_last_state:
+                # Button just pressed
                 if current_time - self.last_button_press < self.button_debounce:
-                    continue
-                    
-                if event.key == pygame.K_ESCAPE:
-                    if self.playing_brick:
-                        self.exit_brick_game()
-                    else:
-                        self.running = False
-                        
-                elif event.key == ord(BUTTON_LEFT):
-                    self.handle_left_button_combo(current_time)
-                    self.last_button_press = current_time
-                    
-                elif event.key == ord(BUTTON_RIGHT):
-                    self.handle_right_button_combo(current_time)
-                    self.last_button_press = current_time
-                    
+                    return  # Debounce
+                self.handle_left_button_combo(current_time)
+                self.last_button_press = current_time
+                
+            # Handle blue button (right/game button)
+            if blue_current and not self.blue_button_last_state:
+                # Button just pressed
+                if current_time - self.last_button_press < self.button_debounce:
+                    return  # Debounce
+                self.handle_right_button_combo(current_time)
+                self.last_button_press = current_time
+            
+            # Update button states
+            self.yellow_button_last_state = yellow_current
+            self.blue_button_last_state = blue_current
+            
+        else:
+            # Keyboard fallback for testing
+            keys = pygame.key.get_pressed()
+            
+            # Handle 'A' key (yellow button equivalent)
+            if keys[pygame.K_a] and not self.yellow_button_last_state:
+                if current_time - self.last_button_press < self.button_debounce:
+                    return  # Debounce
+                self.handle_left_button_combo(current_time)
+                self.last_button_press = current_time
+                
+            # Handle 'D' key (blue button equivalent)
+            if keys[pygame.K_d] and not self.blue_button_last_state:
+                if current_time - self.last_button_press < self.button_debounce:
+                    return  # Debounce
+                self.handle_right_button_combo(current_time)
+                self.last_button_press = current_time
+            
+            # Update button states
+            self.yellow_button_last_state = keys[pygame.K_a]
+            self.blue_button_last_state = keys[pygame.K_d]
+        
     def handle_left_button(self):
         """Handle left button press (pet mascot or exit game)"""
         print("🔘 Left button pressed")
@@ -118,7 +180,7 @@ class TamagotchiWaterBottle:
             self.left_button_press_count = 1
             
         self.last_left_press_time = current_time
-        print(f"🔘 Left button pressed {self.left_button_press_count} times")
+        print(f"🔘 Yellow button (GPIO 17) pressed {self.left_button_press_count} times")
         
         # Handle different press counts
         if self.button_mode == BUTTON_MODE_MAIN:
@@ -143,7 +205,7 @@ class TamagotchiWaterBottle:
             self.right_button_press_count = 1
             
         self.last_right_press_time = current_time
-        print(f"🔘 Right button pressed {self.right_button_press_count} times")
+        print(f"🔘 Blue button (GPIO 27) pressed {self.right_button_press_count} times")
         
         # Handle different press counts
         if self.button_mode == BUTTON_MODE_MAIN:
