@@ -43,6 +43,9 @@ CORNER_RADIUS = 0  # Sharp corners for pixel art
 BUTTON_LEFT = 'a'    # Pet/Exit button
 BUTTON_RIGHT = 'd'   # Start game button
 
+BUTTON_LEFT_PI = 'yellow button'
+BUTTON_RIGHT_PI = 'blue button' 
+
 # Button Function Modes
 BUTTON_MODE_MAIN = 'main'      # Main screen
 BUTTON_MODE_BRICK = 'brick'    # Brick breaker game controls

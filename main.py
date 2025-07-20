@@ -9,7 +9,7 @@ from mascot import Mascot, MascotState
 from ai_manager import AIManager
 from sensor_manager import SensorManager
 from brick_game import BrickGame
-from ui import draw_ui
+from ui import UIController
 from pet import Pet
 
 # Try to import GPIO for Raspberry Pi, fallback to keyboard for testing
@@ -51,6 +51,7 @@ class TamagotchiWaterBottle:
         # Initialize components
         self.sensor_manager = SensorManager()
         self.ai_manager = AIManager()
+        self.ui_controller = UIController()  # New UI controller
         
         # Initialize buttons based on available hardware
         if GPIO_AVAILABLE:
@@ -74,18 +75,15 @@ class TamagotchiWaterBottle:
             self.blue_button_last_state = False
             print("⌨️  Using keyboard controls: 'A' (pet), 'D' (game)")
         
-        # Mascot management (keeping original for compatibility)
+        # Mascot management
         self.current_mascot = Mascot('koi')
         self.current_mascot.load_state()
         
         # Mascot interaction
-        self.mascot_speaking = False
-        self.speech_text = ""
-        self.speech_timer = 0
         self.hearts = 3  # Hearts for mascot affection
         
-        # New Pet system (partner's implementation)
-        self.pet = Pet('koi', self.current_mascot.health, self.hearts)
+        # Pet system (now only handles speech bubbles)
+        self.pet = Pet()
         
         # Game state
         self.running = True
@@ -121,11 +119,19 @@ class TamagotchiWaterBottle:
         # Sensor status
         self.sensor_status = self.sensor_manager.get_sensor_status()
         print(f"🎯 Sensor initialized: {'Connected' if self.sensor_status['connected'] else 'Simulation Mode'}")
-        print(f"🎮 GPIO Button controls: Yellow (GPIO 17) for pet, Blue (GPIO 27) for game")
+        
+        # Get mascot position from UI controller
+        mascot_x, mascot_y = self.ui_controller.get_mascot_position()
+        print(f"📍 Mascot positioned at ({mascot_x}, {mascot_y})")
         
     def handle_events(self):
-        """Handle button input with press counting - supports both GPIO and keyboard"""
+        """Handle input events (GPIO or keyboard)"""
         current_time = time.time()
+        
+        # If in brick game mode, handle brick game events
+        if self.playing_brick:
+            self.handle_brick_game_events()
+            return
         
         # Check for pygame quit event
         for event in pygame.event.get():
@@ -133,62 +139,54 @@ class TamagotchiWaterBottle:
                 self.running = False
                 return
         
+        # Handle input based on available hardware
         if GPIO_AVAILABLE:
-            # Raspberry Pi GPIO button handling
-            yellow_current = self.yellow_button.value
-            blue_current = self.blue_button.value
-            
-            # Handle yellow button (left/pet button)
-            if yellow_current and not self.yellow_button_last_state:
-                # Button just pressed
-                if current_time - self.last_button_press < self.button_debounce:
-                    return  # Debounce
-                self.handle_left_button_combo(current_time)
-                self.last_button_press = current_time
-                
-            # Handle blue button (right/game button)
-            if blue_current and not self.blue_button_last_state:
-                # Button just pressed
-                if current_time - self.last_button_press < self.button_debounce:
-                    return  # Debounce
-                self.handle_right_button_combo(current_time)
-                self.last_button_press = current_time
-            
-            # Update button states
-            self.yellow_button_last_state = yellow_current
-            self.blue_button_last_state = blue_current
-            
+            self.handle_gpio_input(current_time)
         else:
-            # Keyboard fallback for testing
-            keys = pygame.key.get_pressed()
+            self.handle_keyboard_input(current_time)
             
-            # Handle 'A' key (yellow button equivalent)
-            if keys[pygame.K_a] and not self.yellow_button_last_state:
-                if current_time - self.last_button_press < self.button_debounce:
-                    return  # Debounce
-                self.handle_left_button_combo(current_time)
-                self.last_button_press = current_time
-                
-            # Handle 'D' key (blue button equivalent)
-            if keys[pygame.K_d] and not self.blue_button_last_state:
-                if current_time - self.last_button_press < self.button_debounce:
-                    return  # Debounce
-                self.handle_right_button_combo(current_time)
-                self.last_button_press = current_time
+    def handle_gpio_input(self, current_time):
+        """Handle GPIO button input"""
+        # Handle yellow button (GPIO 17)
+        if self.yellow_button.is_pressed and not self.yellow_button_last_state:
+            if current_time - self.last_button_press < self.button_debounce:
+                return  # Debounce
+            self.handle_left_button_combo(current_time)
+            self.last_button_press = current_time
             
-            # Update button states
-            self.yellow_button_last_state = keys[pygame.K_a]
-            self.blue_button_last_state = keys[pygame.K_d]
+        # Handle blue button (GPIO 27)
+        if self.blue_button.is_pressed and not self.blue_button_last_state:
+            if current_time - self.last_button_press < self.button_debounce:
+                return  # Debounce
+            self.handle_right_button_combo(current_time)
+            self.last_button_press = current_time
         
-    def handle_left_button(self):
-        """Handle left button press (pet mascot or exit game)"""
-        print("🔘 Left button pressed")
+        # Update button states
+        self.yellow_button_last_state = self.yellow_button.is_pressed
+        self.blue_button_last_state = self.blue_button.is_pressed
         
-        if self.button_mode == BUTTON_MODE_MAIN:
-            self.pet_mascot()
-        elif self.button_mode == BUTTON_MODE_BRICK:
-            self.exit_brick_game()
+    def handle_keyboard_input(self, current_time):
+        """Handle keyboard input for testing"""
+        keys = pygame.key.get_pressed()
+        
+        # Handle 'A' key (yellow button equivalent)
+        if keys[pygame.K_a] and not self.yellow_button_last_state:
+            if current_time - self.last_button_press < self.button_debounce:
+                return  # Debounce
+            self.handle_left_button_combo(current_time)
+            self.last_button_press = current_time
             
+        # Handle 'D' key (blue button equivalent)
+        if keys[pygame.K_d] and not self.blue_button_last_state:
+            if current_time - self.last_button_press < self.button_debounce:
+                return  # Debounce
+            self.handle_right_button_combo(current_time)
+            self.last_button_press = current_time
+        
+        # Update button states
+        self.yellow_button_last_state = keys[pygame.K_a]
+        self.blue_button_last_state = keys[pygame.K_d]
+        
     def handle_left_button_combo(self, current_time):
         """Handle left button with press counting for different actions"""
         # Check if this is part of a combo
@@ -198,7 +196,8 @@ class TamagotchiWaterBottle:
             self.left_button_press_count = 1
             
         self.last_left_press_time = current_time
-        print(f"🔘 Yellow button (GPIO 17) pressed {self.left_button_press_count} times")
+        button_name = "Yellow (GPIO 17)" if GPIO_AVAILABLE else "A key"
+        print(f"🔘 {button_name} pressed {self.left_button_press_count} times")
         
         # Handle different press counts
         if self.button_mode == BUTTON_MODE_MAIN:
@@ -212,6 +211,7 @@ class TamagotchiWaterBottle:
                 # Triple press: Special interaction
                 self.special_mascot_interaction()
         elif self.button_mode == BUTTON_MODE_BRICK:
+            # In brick game mode, yellow button exits the game
             self.exit_brick_game()
             
     def handle_right_button_combo(self, current_time):
@@ -223,7 +223,8 @@ class TamagotchiWaterBottle:
             self.right_button_press_count = 1
             
         self.last_right_press_time = current_time
-        print(f"🔘 Blue button (GPIO 27) pressed {self.right_button_press_count} times")
+        button_name = "Blue (GPIO 27)" if GPIO_AVAILABLE else "D key"
+        print(f"🔘 {button_name} pressed {self.right_button_press_count} times")
         
         # Handle different press counts
         if self.button_mode == BUTTON_MODE_MAIN:
@@ -236,6 +237,71 @@ class TamagotchiWaterBottle:
             elif self.right_button_press_count == 3:
                 # Triple press: Settings menu
                 self.show_settings()
+        elif self.button_mode == BUTTON_MODE_BRICK:
+            # In brick game mode, blue button launches the ball
+            if self.brick_game and not self.brick_game.ball_launched:
+                self.brick_game.launch_ball()
+                print("🎾 Ball launched via blue button!")
+            
+    def handle_brick_game_events(self):
+        """Handle events specifically for brick game mode"""
+        if not self.playing_brick or not self.brick_game:
+            return
+            
+        current_time = time.time()
+        
+        # Check for pygame quit event
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.running = False
+                return
+            # Removed keyboard controls since user doesn't have keyboard
+            # All controls are handled via button press detection
+        
+        # Check for button presses based on available hardware
+        if GPIO_AVAILABLE:
+            # Handle yellow button (GPIO 17) for exiting
+            if self.yellow_button.is_pressed and not self.yellow_button_last_state:
+                if current_time - self.last_button_press < self.button_debounce:
+                    return  # Debounce
+                self.exit_brick_game()
+                self.last_button_press = current_time
+                
+            # Handle blue button (GPIO 27) for launching ball
+            if self.blue_button.is_pressed and not self.blue_button_last_state:
+                if current_time - self.last_button_press < self.button_debounce:
+                    return  # Debounce
+                if not self.brick_game.ball_launched:
+                    self.brick_game.launch_ball()
+                    print("🎾 Ball launched via blue button!")
+                self.last_button_press = current_time
+            
+            # Update button states
+            self.yellow_button_last_state = self.yellow_button.is_pressed
+            self.blue_button_last_state = self.blue_button.is_pressed
+        else:
+            # Handle keyboard simulation
+            keys = pygame.key.get_pressed()
+            
+            # Handle 'A' key (yellow button equivalent) for exiting
+            if keys[pygame.K_a] and not self.yellow_button_last_state:
+                if current_time - self.last_button_press < self.button_debounce:
+                    return  # Debounce
+                self.exit_brick_game()
+                self.last_button_press = current_time
+                
+            # Handle 'D' key (blue button equivalent) for launching ball
+            if keys[pygame.K_d] and not self.blue_button_last_state:
+                if current_time - self.last_button_press < self.button_debounce:
+                    return  # Debounce
+                if not self.brick_game.ball_launched:
+                    self.brick_game.launch_ball()
+                    print("🎾 Ball launched via blue button!")
+                self.last_button_press = current_time
+            
+            # Update button states
+            self.yellow_button_last_state = keys[pygame.K_a]
+            self.blue_button_last_state = keys[pygame.K_d]
             
     def switch_mascot(self):
         """Switch between different mascots"""
@@ -252,11 +318,8 @@ class TamagotchiWaterBottle:
         self.current_mascot = Mascot(new_type)
         self.current_mascot.load_state()
         
-        # Update pet to match new mascot
-        self.pet = Pet(new_type, self.current_mascot.health, self.hearts)
-        
         # Mascot speaks about the switch
-        self.mascot_speak(f"Hi! I'm {self.current_mascot.name}! Nice to meet you!")
+        self.pet.start_speaking(f"Hi! I'm {self.current_mascot.name}! Nice to meet you!")
         
         print(f"🔄 Switched mascot from {current_type} to {new_type}")
         
@@ -265,41 +328,33 @@ class TamagotchiWaterBottle:
         # Give extra health and hearts
         self.current_mascot.health = min(self.current_mascot.max_health, 
                                        self.current_mascot.health + 15)
-        self.pet.hp = self.current_mascot.health
         
         self.hearts = min(5, self.hearts + 2)
-        self.pet.hearts = self.hearts
         
         # Special state
         self.current_mascot.current_state = MascotState.HAPPY
         self.current_mascot.state_timer = 0
         
         # Add special particles
-        self.add_particles(self.current_mascot.x, self.current_mascot.y, 'sparkle')
+        mascot_x, mascot_y = self.ui_controller.get_mascot_position()
+        self.add_particles(mascot_x, mascot_y, 'sparkle')
         
         # Special message
-        self.mascot_speak("Wow! You really love me! Thank you for the special attention!")
+        self.pet.start_speaking("Wow! You really love me! Thank you for the special attention!")
         
         print("✨ Special mascot interaction triggered!")
         
     def show_stats(self):
         """Show drinking statistics (double press right)"""
         stats_text = f"Today's Progress:\nWater: {self.session_water}ml\nTotal: {self.total_water_drunk}ml\nGoal: {self.daily_goal}ml"
-        self.mascot_speak(stats_text)
+        self.pet.start_speaking(stats_text)
         print("📊 Showing drinking statistics")
         
     def show_settings(self):
         """Show settings menu (triple press right)"""
         settings_text = "Settings:\n- Health decay rate\n- Button sensitivity\n- Sound effects\n- Display options"
-        self.mascot_speak(settings_text)
+        self.pet.start_speaking(settings_text)
         print("⚙️ Showing settings menu")
-            
-    def handle_right_button(self):
-        """Handle right button press (start game)"""
-        print("🔘 Right button pressed - Starting game")
-        
-        if self.button_mode == BUTTON_MODE_MAIN:
-            self.start_brick_game()
             
     def start_brick_game(self):
         """Start the brick breaker game"""
@@ -307,10 +362,12 @@ class TamagotchiWaterBottle:
         try:
             self.playing_brick = True
             self.button_mode = BUTTON_MODE_BRICK
-            self.brick_game = BrickGame(self.screen, self.sensor_manager)
+            # Pass the screen and dimensions for horizontal orientation
+            # Set test_mode=False for button-only controls
+            self.brick_game = BrickGame(self.screen, self.sensor_manager, SCREEN_WIDTH, SCREEN_HEIGHT, test_mode=False)
             
             # Mascot speaks about the game
-            self.mascot_speak(self.ai_manager.generate_random_feature("", "", 100))
+            self.pet.start_speaking(self.ai_manager.generate_random_feature("", "", 100))
             
             print("🎮 Brick Breaker game started successfully!")
         except Exception as e:
@@ -335,12 +392,9 @@ class TamagotchiWaterBottle:
             self.current_mascot.current_state = MascotState.HAPPY
             self.current_mascot.state_timer = 0
             
-            # Update pet health to match
-            self.pet.hp = self.current_mascot.health
-            
             # Mascot speaks about the game result
             context = f"User just played Brick Breaker and scored {final_score} points!"
-            self.mascot_speak(self.ai_manager.generate_conversation("", "", context))
+            self.pet.start_speaking(self.ai_manager.generate_conversation("", "", context))
             
             print(f"🎮 Brick Breaker game ended! Final score: {final_score}, Level: {final_level}")
             
@@ -351,23 +405,13 @@ class TamagotchiWaterBottle:
         self.current_mascot.health = min(self.current_mascot.max_health, 
                                        self.current_mascot.health + 5)
         
-        # Update pet health to match
-        self.pet.hp = self.current_mascot.health
-        
         # Add hearts for affection
         self.hearts = min(5, self.hearts + 1)
-        self.pet.hearts = self.hearts
         
         # Mascot speaks directly
-        if not self.mascot_speaking:
-            self.mascot_speak(self.ai_manager.generate_conversation("", "", "User just petted me!"))
+        if not self.pet.speaking:
+            self.pet.start_speaking(self.ai_manager.generate_conversation("", "", "User just petted me!"))
             
-    def mascot_speak(self, text):
-        """Make the mascot speak with a speech bubble"""
-        self.mascot_speaking = True
-        self.speech_text = text
-        self.speech_timer = 4.0  # Show speech for 4 seconds
-        
     def add_particles(self, x, y, particle_type):
         """Add particle effects (limited for performance)"""
         # Limit particles for better performance
@@ -434,10 +478,10 @@ class TamagotchiWaterBottle:
         
         # Update mascot health
         self.current_mascot.drink_water(water_amount)
-        self.pet.hp = self.current_mascot.health
         
         # Add particles
-        self.add_particles(self.current_mascot.x, self.current_mascot.y, 'water')
+        mascot_x, mascot_y = self.ui_controller.get_mascot_position()
+        self.add_particles(mascot_x, mascot_y, 'water')
         
         # Check for achievements
         if self.session_water >= MIN_WATER_FOR_ACHIEVEMENT and self.achievement_timer <= 0:
@@ -458,25 +502,13 @@ class TamagotchiWaterBottle:
         # Update mascot
         self.current_mascot.update(dt)
         
-        # Update pet animation
-        animation_state = "idle"
-        if self.current_mascot.current_state == MascotState.HAPPY:
-            animation_state = "happy"
-        elif self.current_mascot.current_state == MascotState.DRINKING:
-            animation_state = "drinking"
-        elif self.current_mascot.current_state == MascotState.SAD:
-            animation_state = "sad"
-            
-        self.pet.update(dt, animation_state)
+        # Update pet (speech bubble)
+        self.pet.update(dt)
         
         # Update particles
         self.update_particles()
         
         # Update timers
-        self.speech_timer -= dt
-        if self.speech_timer <= 0:
-            self.mascot_speaking = False
-            
         self.achievement_timer -= dt
         
         # Reset button press counts after timeout
@@ -491,7 +523,7 @@ class TamagotchiWaterBottle:
             self.current_mascot.save_state()
             
     def draw(self):
-        """Draw everything to screen using partner's UI system"""
+        """Draw everything to screen using new UI controller system"""
         if self.playing_brick:
             # Draw brick game
             if self.brick_game:
@@ -502,19 +534,24 @@ class TamagotchiWaterBottle:
         # Clear screen
         self.screen.fill(BLACK)
         
-        # Draw pet sprite (partner's implementation)
-        self.pet.draw(self.screen, "idle")
+        # Get mascot position and animation info
+        mascot_x, mascot_y = self.ui_controller.get_mascot_position()
+        animation_state = self.current_mascot.get_animation_state()
+        animation_frame = self.current_mascot.get_animation_frame()
         
-        # Draw UI elements (partner's implementation)
+        # Draw mascot using UI controller
+        self.ui_controller.draw_mascot(self.screen, self.current_mascot.type, animation_state, animation_frame)
+        
+        # Draw UI elements using UI controller
         health_percentage = (self.current_mascot.health / self.current_mascot.max_health) * 100
-        draw_ui(self.screen, self.hearts, health_percentage)
+        self.ui_controller.draw_ui(self.screen, self.hearts, health_percentage)
         
         # Draw particles
         self.draw_particles()
         
         # Draw mascot speech bubble
-        if self.mascot_speaking:
-            self.draw_speech_bubble()
+        if self.pet.speaking:
+            self.pet.draw_speech_bubble(self.screen, mascot_x, mascot_y)
             
         # Draw achievement popup
         if self.achievement_timer > 0:
@@ -546,72 +583,13 @@ class TamagotchiWaterBottle:
                 pygame.draw.circle(self.screen, color, 
                                  (int(particle['x']), int(particle['y'])), 3)
                                  
-    def draw_speech_bubble(self):
-        """Draw mascot speech bubble (vertical layout)"""
-        if not self.speech_text:
-            return
-            
-        # Calculate bubble size based on text
-        font = pygame.font.Font(None, 20)
-        words = self.speech_text.split()
-        lines = []
-        current_line = ""
-        max_width = 0
-        
-        for word in words:
-            test_line = current_line + " " + word if current_line else word
-            if font.size(test_line)[0] < 200:  # Smaller for vertical layout
-                current_line = test_line
-            else:
-                lines.append(current_line)
-                max_width = max(max_width, font.size(current_line)[0])
-                current_line = word
-        lines.append(current_line)
-        max_width = max(max_width, font.size(current_line)[0])
-        
-        # Draw speech bubble
-        bubble_width = max_width + 30
-        bubble_height = len(lines) * 25 + 15
-        bubble_x = self.pet.x - bubble_width // 2  # Center relative to pet
-        bubble_y = self.pet.y - bubble_height - 50  # Position above pet
-        
-        # Keep bubble on screen
-        if bubble_x < 10:
-            bubble_x = 10
-        elif bubble_x + bubble_width > SCREEN_WIDTH - 10:
-            bubble_x = SCREEN_WIDTH - bubble_width - 10
-            
-        bubble_rect = pygame.Rect(bubble_x, bubble_y, bubble_width, bubble_height)
-        
-        # Bubble background
-        pygame.draw.rect(self.screen, WHITE, bubble_rect)
-        pygame.draw.rect(self.screen, BLACK, bubble_rect, 2)
-        
-        # Draw speech bubble tail
-        tail_x = self.pet.x
-        tail_y = bubble_y + bubble_height
-        tail_points = [
-            (tail_x, tail_y),
-            (tail_x - 10, tail_y + 15),
-            (tail_x + 10, tail_y + 15)
-        ]
-        pygame.draw.polygon(self.screen, WHITE, tail_points)
-        pygame.draw.polygon(self.screen, BLACK, tail_points, 2)
-        
-        # Draw text
-        for i, line in enumerate(lines):
-            text = font.render(line, True, BLACK)
-            text_x = bubble_x + 15
-            text_y = bubble_y + 8 + i * 20
-            self.screen.blit(text, (text_x, text_y))
-        
     def draw_achievement(self):
         """Draw achievement popup with pixel-art style"""
         if not self.achievement_popup:
             return
             
         # Draw achievement box with pixel-art style
-        box_width = 300  # Smaller for vertical layout
+        box_width = 300
         box_height = 100
         box_x = SCREEN_WIDTH // 2 - box_width // 2
         box_y = 80
