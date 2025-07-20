@@ -271,7 +271,7 @@ class TamagotchiWaterBottle:
         self.hearts = min(5, self.hearts + 2)
         
         # Special state
-        self.current_mascot.current_state = MascotState.HAPPY
+        self.current_mascot.current_state = MascotState.IDLE
         self.current_mascot.state_timer = 0
         
         # Add special particles
