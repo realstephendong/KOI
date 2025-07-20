@@ -13,7 +13,7 @@ from graphics.ui import UIController
 from graphics.pet import Pet
 
 # GPIO fallback for testing
-GPIO_AVAILABLE = False
+GPIO_AVAILABLE = True
 print("⌨️  Testing vertical orientation on MacBook")
 print("   Press 'A' for yellow button (pet), 'D' for blue button (game)")
 
@@ -48,8 +48,13 @@ class TamagotchiWaterBottle:
         self.ui_controller = UIController()  # New UI controller
         
         # Fallback to keyboard for testing
-        self.yellow_button = None
-        self.blue_button = None
+        if (GPIO_AVAILABLE):
+            from gpiozero import Button
+            self.yellow_button = Button(17)
+            self.blue_button = Button(27)
+        else:
+            self.yellow_button = None
+            self.blue_button = None
         self.yellow_button_up = False # set to true and then false immediately
         self.blue_button_up = False # set to true and then false immediately
         self.yellow_button_last_state = False
@@ -175,6 +180,8 @@ class TamagotchiWaterBottle:
             self.blue_button_up = False
 
     def main_loop(self):
+        if self.yellow_button_up and self.blue_button_up:
+            self.state = "selection"
         if self.yellow_button_up: # pet
             self.pet_mascot()
             self.yellow_button_up = False
