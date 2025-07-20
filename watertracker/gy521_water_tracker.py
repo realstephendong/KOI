@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
 """
-KOI - GY521 Water Consumption Tracker for Raspberry Pi (QNX Version with Robust Detection)
+KOI - GY521 Water Consumption Tracker for Raspberry Pi 5 (Raspberry Pi OS)
 
 This code uses a GY521 (MPU6050) gyroscope module to detect when a water bottle
 is tilted for drinking and calculates water consumption based on tilt angle and duration.
 
 Hardware:
 - GY521 (MPU6050) gyroscope module
-- Raspberry Pi 4 with QNX 8.0
+- Raspberry Pi 5 with Raspberry Pi OS (Bookworm or later)
 
 Connections:
-- VCC to 3.3V or 5V (GY521 works with both)
-- GND to GND
-- SCL to GPIO3 (SCL)
-- SDA to GPIO2 (SDA)
+- VCC to 3.3V (Pin 1) or 5V (Pin 2) - GY521 works with both
+- GND to GND (Pin 6)
+- SCL to GPIO3/SCL (Pin 5)
+- SDA to GPIO2/SDA (Pin 3)
+
+Setup Instructions:
+1. Enable I2C: sudo raspi-config -> Interface Options -> I2C -> Enable
+2. Install dependencies: sudo apt install python3-smbus i2c-tools
+3. Test connection: sudo i2cdetect -y 1
+4. Add user to i2c group: sudo usermod -a -G i2c $USER
+5. Logout and login again
 """
 
 import smbus
@@ -21,9 +28,9 @@ import time
 import math
 from datetime import datetime
 
-class GY521WaterTrackerFixed:
+class GY521WaterTracker:
     def __init__(self):
-        # GY521 (MPU6050) I2C address
+        # GY521 (MPU6050) I2C address (can be 0x68 or 0x69 depending on AD0 pin)
         self.MPU6050_ADDR = 0x68
         
         # MPU6050 register addresses
@@ -67,21 +74,54 @@ class GY521WaterTrackerFixed:
         self.total_water_consumed = 0.0
         self.session_water_consumed = 0.0
         
-        # Initialize I2C bus for QNX using standard smbus
-        try:
-            # Try bus 1 first (standard Raspberry Pi I2C)
-            self.bus = smbus.SMBus(1)
-            print("I2C bus initialized successfully using smbus(1)")
-        except Exception as e:
-            print(f"Failed to initialize I2C bus with smbus(1): {e}")
-            print("Trying alternative I2C bus...")
-            try:
-                # Try bus 0 as fallback
-                self.bus = smbus.SMBus(0)
-                print("I2C bus initialized successfully using smbus(0)")
-            except Exception as e2:
-                print(f"Failed to initialize I2C bus with smbus(0): {e2}")
-                raise
+        # Initialize I2C bus for Raspberry Pi OS
+        self.bus = None
+        i2c_buses = [1, 0]  # Try bus 1 first (standard for Pi 5), then bus 0
+        addresses = [0x68, 0x69]  # Try both possible addresses
+        
+        print("Initializing I2C connection...")
+        
+        # Try different combinations of bus and address
+        success = False
+        for bus_num in i2c_buses:
+            for addr in addresses:
+                try:
+                    print(f"Trying I2C bus {bus_num} with address 0x{addr:02X}...")
+                    test_bus = smbus.SMBus(bus_num)
+                    
+                    # Test communication by reading WHO_AM_I register
+                    who_am_i = test_bus.read_byte_data(addr, 0x75)
+                    print(f"WHO_AM_I register: 0x{who_am_i:02X}")
+                    
+                    if who_am_i == 0x68:
+                        print(f"✅ MPU6050 found on I2C bus {bus_num} at address 0x{addr:02X}")
+                        self.bus = test_bus
+                        self.MPU6050_ADDR = addr
+                        success = True
+                        break
+                    else:
+                        test_bus.close()
+                        
+                except Exception as e:
+                    print(f"   Failed: {e}")
+                    try:
+                        test_bus.close()
+                    except:
+                        pass
+            
+            if success:
+                break
+        
+        if not self.bus:
+            print("\n❌ Failed to initialize I2C communication with MPU6050")
+            print("\nTroubleshooting steps:")
+            print("1. Check wiring connections")
+            print("2. Enable I2C: sudo raspi-config -> Interface Options -> I2C")
+            print("3. Install I2C tools: sudo apt install i2c-tools python3-smbus")
+            print("4. Scan for devices: sudo i2cdetect -y 1")
+            print("5. Add user to i2c group: sudo usermod -a -G i2c $USER")
+            print("6. Reboot and try again")
+            raise Exception("I2C initialization failed - see troubleshooting steps above")
         
         # Initialize MPU6050
         if not self.init_mpu6050():
@@ -91,15 +131,55 @@ class GY521WaterTrackerFixed:
         self.calibrate_sensor()
     
     def init_mpu6050(self):
-        """Initialize the MPU6050 sensor"""
+        """Initialize the MPU6050 sensor for Raspberry Pi OS"""
         try:
-            # Wake up the MPU6050
-            self.bus.write_byte_data(self.MPU6050_ADDR, self.PWR_MGMT_1, 0)
+            print("Configuring MPU6050 for Raspberry Pi OS...")
+            
+            # Step 1: Wake up the MPU6050 (clear sleep bit in PWR_MGMT_1)
+            print("  Waking up MPU6050...")
+            self.bus.write_byte_data(self.MPU6050_ADDR, self.PWR_MGMT_1, 0x00)
             time.sleep(0.1)
-            print("MPU6050 initialized successfully")
+            
+            # Step 2: Verify device is awake
+            pwr_mgmt = self.bus.read_byte_data(self.MPU6050_ADDR, self.PWR_MGMT_1)
+            print(f"  Power management register: 0x{pwr_mgmt:02X}")
+            
+            # Step 3: Configure accelerometer (±2g range)
+            print("  Configuring accelerometer...")
+            self.bus.write_byte_data(self.MPU6050_ADDR, 0x1C, 0x00)  # ACCEL_CONFIG
+            time.sleep(0.05)
+            
+            # Step 4: Configure gyroscope (±250°/s range)
+            print("  Configuring gyroscope...")
+            self.bus.write_byte_data(self.MPU6050_ADDR, 0x1B, 0x00)  # GYRO_CONFIG
+            time.sleep(0.05)
+            
+            # Step 5: Set sample rate (1kHz / (1 + 7) = 125Hz)
+            print("  Setting sample rate...")
+            self.bus.write_byte_data(self.MPU6050_ADDR, 0x19, 0x07)  # SMPLRT_DIV
+            time.sleep(0.05)
+            
+            # Step 6: Configure Digital Low Pass Filter (DLPF)
+            print("  Configuring filters...")
+            self.bus.write_byte_data(self.MPU6050_ADDR, 0x1A, 0x06)  # CONFIG register
+            time.sleep(0.05)
+            
+            # Step 7: Test reading accelerometer data
+            print("  Testing accelerometer readings...")
+            accel_x_h = self.bus.read_byte_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H)
+            accel_x_l = self.bus.read_byte_data(self.MPU6050_ADDR, self.ACCEL_XOUT_H + 1)
+            print(f"  Sample reading - X-axis: 0x{accel_x_h:02X}{accel_x_l:02X}")
+            
+            print("✅ MPU6050 initialized successfully for Raspberry Pi OS")
             return True
+            
         except Exception as e:
-            print(f"Failed to initialize MPU6050: {e}")
+            print(f"❌ Failed to initialize MPU6050: {e}")
+            print("\nPossible issues:")
+            print("- I2C not enabled in raspi-config")
+            print("- Incorrect wiring connections")
+            print("- Device at different address (try 0x69)")
+            print("- Insufficient permissions (add user to i2c group)")
             return False
     
     def calibrate_sensor(self):
@@ -337,17 +417,20 @@ class GY521WaterTrackerFixed:
                 self._shake_printed = False
     
     def run(self):
-        """Main loop for water tracking"""
-        print("KOI - GY521 Water Consumption Tracker (QNX Version with Robust Detection)")
+        """Main loop for water tracking on Raspberry Pi OS"""
+        print("KOI - GY521 Water Consumption Tracker for Raspberry Pi 5")
+        print("Running on Raspberry Pi OS")
         print("Initialization complete!")
+        print(f"I2C Address: 0x{self.MPU6050_ADDR:02X}")
         print(f"Tilt threshold: {self.TILT_THRESHOLD}°")
         print(f"Noise threshold: {self.NOISE_THRESHOLD:.1f}°")
         print("Tilt the bottle to start tracking water consumption...")
+        print("Press Ctrl+C to stop")
         print()
         
         last_update_time = time.time()
         last_print_time = time.time()
-        update_interval = 0.05  # Update every 50ms
+        update_interval = 0.05  # Update every 50ms (20 Hz)
         
         try:
             while True:
@@ -358,7 +441,7 @@ class GY521WaterTrackerFixed:
                     self.read_accelerometer()
                     self.calculate_tilt_angles()
                     self.detect_drinking(current_time)
-                    self.detect_shake()  # Call shake detection
+                    self.detect_shake()
                     last_update_time = current_time
                 
                 # Print status every second
@@ -369,16 +452,33 @@ class GY521WaterTrackerFixed:
                 time.sleep(0.01)  # Small delay to prevent excessive CPU usage
                 
         except KeyboardInterrupt:
-            print("\nStopping water tracker...")
+            print("\n\nStopping water tracker...")
             print(f"Final total water consumed: {self.total_water_consumed:.1f} ml")
+            print("Thank you for using KOI Water Tracker! 🐟")
+        except Exception as e:
+            print(f"\nUnexpected error: {e}")
+            print("Stopping water tracker...")
         finally:
-            self.bus.close()
+            try:
+                self.bus.close()
+                print("I2C bus closed successfully")
+            except:
+                pass
 
 if __name__ == "__main__":
+    print("KOI Water Tracker - Raspberry Pi 5 Edition")
+    print("=" * 50)
+    
     try:
-        tracker = GY521WaterTrackerFixed()
+        tracker = GY521WaterTracker()
         tracker.run()
     except Exception as e:
-        print(f"Error: {e}")
-        print("Make sure the GY521 module is properly connected to the Raspberry Pi.")
-        print("On QNX, ensure I2C is enabled and the device files exist.") 
+        print(f"\n❌ Error: {e}")
+        print("\nSetup checklist for Raspberry Pi 5:")
+        print("1. sudo raspi-config -> Interface Options -> I2C -> Enable")
+        print("2. sudo apt update && sudo apt install python3-smbus i2c-tools")
+        print("3. sudo usermod -a -G i2c $USER")
+        print("4. Logout and login again")
+        print("5. sudo i2cdetect -y 1  # Should show device at 68 or 69")
+        print("6. Check wiring: VCC->3.3V, GND->GND, SCL->Pin5, SDA->Pin3")
+        print("\nFor more help, check the Raspberry Pi documentation or run 'pinout' command.") 
