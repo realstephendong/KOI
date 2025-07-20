@@ -43,11 +43,11 @@ class BrickGame:
         self.ball_speed_y = -4
         self.ball_launched = False
         
-        # Brick settings
-        self.brick_width = 60
-        self.brick_height = 20
-        self.brick_rows = 8
-        self.brick_cols = 7
+        # Brick settings - More blocks for better gameplay
+        self.brick_width = 50  # Smaller bricks to fit more
+        self.brick_height = 18
+        self.brick_rows = 12   # More rows
+        self.brick_cols = 10   # More columns
         self.bricks = []
         self.setup_bricks()
         
@@ -66,17 +66,30 @@ class BrickGame:
         # Game loop timing
         self.last_update = pygame.time.get_ticks()
         
+        # Auto-launch timer (launch ball after 2 seconds if not manually launched)
+        self.auto_launch_timer = 2.0
+        
     def setup_bricks(self):
         """Setup brick layout"""
         self.bricks = []
-        start_x = 30
-        start_y = 50
+        
+        # Calculate spacing to fit all bricks
+        total_brick_width = self.brick_cols * self.brick_width
+        total_brick_height = self.brick_rows * self.brick_height
+        
+        # Calculate margins to center the brick layout
+        margin_x = (self.width - total_brick_width) // 2
+        margin_y = 50  # Top margin
+        
+        # Add some spacing between bricks
+        brick_spacing_x = 2
+        brick_spacing_y = 2
         
         for row in range(self.brick_rows):
             for col in range(self.brick_cols):
                 brick = {
-                    'x': start_x + col * (self.brick_width + 5),
-                    'y': start_y + row * (self.brick_height + 5),
+                    'x': margin_x + col * (self.brick_width + brick_spacing_x),
+                    'y': margin_y + row * (self.brick_height + brick_spacing_y),
                     'width': self.brick_width,
                     'height': self.brick_height,
                     'color': self.get_brick_color(row),
@@ -84,6 +97,8 @@ class BrickGame:
                 }
                 self.bricks.append(brick)
                 
+        print(f"🧱 Created {len(self.bricks)} bricks ({self.brick_rows} rows × {self.brick_cols} columns)")
+        
     def get_brick_color(self, row):
         """Get brick color based on row"""
         colors = [WHITE, LIGHT_GRAY, GRAY, DARK_GRAY]
@@ -98,20 +113,28 @@ class BrickGame:
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE or event.key == ord(BUTTON_LEFT):
                     self.running = False
-                elif event.key == pygame.K_SPACE:
+                elif event.key == pygame.K_SPACE or event.key == ord(BUTTON_RIGHT):
                     if not self.ball_launched:
                         self.launch_ball()
                         
     def launch_ball(self):
         """Launch the ball from paddle"""
-        self.ball_launched = True
-        self.ball_speed_y = -4
-        self.ball_speed_x = random.uniform(-3, 3)
-        
+        if not self.ball_launched:
+            self.ball_launched = True
+            self.ball_speed_y = -4
+            self.ball_speed_x = random.uniform(-3, 3)
+            print("🎾 Ball launched!")
+            
     def update(self, dt):
         """Update game state"""
         if self.paused or self.game_over:
             return
+            
+        # Update auto-launch timer
+        if not self.ball_launched:
+            self.auto_launch_timer -= dt
+            if self.auto_launch_timer <= 0:
+                self.launch_ball()
             
         # Update paddle position based on tilt
         self.update_paddle_from_tilt()
@@ -218,6 +241,9 @@ class BrickGame:
         self.ball_x = self.paddle_x + self.paddle_width // 2
         self.ball_y = self.paddle_y - self.ball_size
         
+        # Reset auto-launch timer
+        self.auto_launch_timer = 2.0
+        
         if self.lives <= 0:
             self.game_over = True
             
@@ -231,6 +257,9 @@ class BrickGame:
         self.ball_launched = False
         self.ball_x = self.paddle_x + self.paddle_width // 2
         self.ball_y = self.paddle_y - self.ball_size
+        
+        # Reset auto-launch timer
+        self.auto_launch_timer = 2.0
         
         # Increase difficulty
         self.ball_speed_x = min(8, self.ball_speed_x + 0.5)
@@ -354,10 +383,20 @@ class BrickGame:
         # Draw controls
         controls_font = pygame.font.Font(None, 18)
         controls_text = controls_font.render("Tilt bottle to move paddle", True, GRAY)
-        self.screen.blit(controls_text, (10, self.height - 40))
+        self.screen.blit(controls_text, (10, self.height - 60))
         
-        exit_text = controls_font.render(f"Press {BUTTON_LEFT.upper()} to exit", True, GRAY)
-        self.screen.blit(exit_text, (10, self.height - 20))
+        # Draw launch instructions
+        if not self.ball_launched:
+            launch_text = controls_font.render("Press SPACE or D to launch ball", True, WHITE)
+            self.screen.blit(launch_text, (10, self.height - 40))
+            
+            # Show auto-launch countdown
+            if self.auto_launch_timer > 0:
+                countdown_text = controls_font.render(f"Auto-launch in {self.auto_launch_timer:.1f}s", True, LIGHT_GRAY)
+                self.screen.blit(countdown_text, (10, self.height - 20))
+        else:
+            exit_text = controls_font.render(f"Press {BUTTON_LEFT.upper()} to exit", True, GRAY)
+            self.screen.blit(exit_text, (10, self.height - 20))
         
     def draw_game_over(self):
         """Draw game over screen"""

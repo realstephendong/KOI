@@ -109,6 +109,11 @@ class TamagotchiWaterBottle:
         """Handle keyboard input with press counting for testing"""
         current_time = time.time()
         
+        # If in brick game mode, handle brick game events
+        if self.playing_brick:
+            self.handle_brick_game_events()
+            return
+        
         # Check for pygame quit event
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -183,6 +188,29 @@ class TamagotchiWaterBottle:
             elif self.right_button_press_count == 3:
                 # Triple press: Settings menu
                 self.show_settings()
+        elif self.button_mode == BUTTON_MODE_BRICK:
+            # In brick game mode, right button launches the ball
+            if self.brick_game and not self.brick_game.ball_launched:
+                self.brick_game.launch_ball()
+                print("🎾 Ball launched via button press!")
+            
+    def handle_brick_game_events(self):
+        """Handle events specifically for brick game mode"""
+        if not self.playing_brick or not self.brick_game:
+            return
+            
+        # Check for pygame quit event
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.running = False
+                return
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE or event.key == ord(BUTTON_LEFT):
+                    self.exit_brick_game()
+                elif event.key == pygame.K_SPACE or event.key == ord(BUTTON_RIGHT):
+                    if not self.brick_game.ball_launched:
+                        self.brick_game.launch_ball()
+                        print("🎾 Ball launched via keyboard!")
             
     def switch_mascot(self):
         """Switch between different mascots"""
