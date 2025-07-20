@@ -9,7 +9,7 @@ from mascot import Mascot, MascotState
 from ai_manager import AIManager
 from sensor_manager import SensorManager
 from brick_game import BrickGame
-from ui import draw_ui
+from ui import UIController
 from pet import Pet
 
 # GPIO fallback for testing
@@ -22,8 +22,21 @@ class TamagotchiWaterBottle:
         pygame.init()
         
         # Set up display with vertical orientation for testing
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-        print(f"🔧 Testing vertical orientation: {SCREEN_WIDTH}x{SCREEN_HEIGHT}")
+        # Physical screen dimensions (what the user sees)
+        self.DEVICE_WIDTH = 1024   # Physical screen width
+        self.DEVICE_HEIGHT = 600   # Physical screen height
+        
+        # Application canvas dimensions (what we draw on)
+        self.APP_WIDTH = 600       # App width (will be rotated)
+        self.APP_HEIGHT = 1024     # App height (will be rotated)
+        
+        # Create the visible screen
+        self.screen = pygame.display.set_mode((self.DEVICE_WIDTH, self.DEVICE_HEIGHT))
+        
+        # Create the offscreen canvas for drawing
+        self.offscreen = pygame.Surface((self.APP_WIDTH, self.APP_HEIGHT))
+        
+        print(f"🔧 Testing vertical orientation: {self.APP_WIDTH}x{self.APP_HEIGHT} canvas on {self.DEVICE_WIDTH}x{self.DEVICE_HEIGHT} screen")
             
         pygame.display.set_caption("Tamagotchi Water Bottle - Vertical Test")
         self.clock = pygame.time.Clock()
@@ -31,6 +44,7 @@ class TamagotchiWaterBottle:
         # Initialize components
         self.sensor_manager = SensorManager()
         self.ai_manager = AIManager()
+        self.ui_controller = UIController()  # New UI controller
         
         # Fallback to keyboard for testing
         self.yellow_button = None
@@ -46,13 +60,10 @@ class TamagotchiWaterBottle:
         self.current_mascot.load_state()
         
         # Mascot interaction
-        self.mascot_speaking = False
-        self.speech_text = ""
-        self.speech_timer = 0
         self.hearts = 3  # Hearts for mascot affection
         
-        # New Pet system (partner's implementation)
-        self.pet = Pet('koi', self.current_mascot.health, self.hearts)
+        # Pet system (now only handles speech bubbles)
+        self.pet = Pet()
         
         # Game state
         self.running = True
@@ -89,6 +100,10 @@ class TamagotchiWaterBottle:
         self.sensor_status = self.sensor_manager.get_sensor_status()
         print(f"🎯 Sensor initialized: {'Connected' if self.sensor_status['connected'] else 'Simulation Mode'}")
         print(f"🎮 Testing vertical orientation with keyboard controls")
+        
+        # Get mascot position from UI controller
+        mascot_x, mascot_y = self.ui_controller.get_mascot_position()
+        print(f"📍 Mascot positioned at ({mascot_x}, {mascot_y})")
         
     def handle_events(self):
         """Handle keyboard input with press counting for testing"""
@@ -184,11 +199,8 @@ class TamagotchiWaterBottle:
         self.current_mascot = Mascot(new_type)
         self.current_mascot.load_state()
         
-        # Update pet to match new mascot
-        self.pet = Pet(new_type, self.current_mascot.health, self.hearts)
-        
         # Mascot speaks about the switch
-        self.mascot_speak(f"Hi! I'm {self.current_mascot.name}! Nice to meet you!")
+        self.pet.start_speaking(f"Hi! I'm {self.current_mascot.name}! Nice to meet you!")
         
         print(f"🔄 Switched mascot from {current_type} to {new_type}")
         
@@ -197,33 +209,32 @@ class TamagotchiWaterBottle:
         # Give extra health and hearts
         self.current_mascot.health = min(self.current_mascot.max_health, 
                                        self.current_mascot.health + 15)
-        self.pet.hp = self.current_mascot.health
         
         self.hearts = min(5, self.hearts + 2)
-        self.pet.hearts = self.hearts
         
         # Special state
         self.current_mascot.current_state = MascotState.HAPPY
         self.current_mascot.state_timer = 0
         
         # Add special particles
-        self.add_particles(self.current_mascot.x, self.current_mascot.y, 'sparkle')
+        mascot_x, mascot_y = self.ui_controller.get_mascot_position()
+        self.add_particles(mascot_x, mascot_y, 'sparkle')
         
         # Special message
-        self.mascot_speak("Wow! You really love me! Thank you for the special attention!")
+        self.pet.start_speaking("Wow! You really love me! Thank you for the special attention!")
         
         print("✨ Special mascot interaction triggered!")
         
     def show_stats(self):
         """Show drinking statistics (double press right)"""
         stats_text = f"Today's Progress:\nWater: {self.session_water}ml\nTotal: {self.total_water_drunk}ml\nGoal: {self.daily_goal}ml"
-        self.mascot_speak(stats_text)
+        self.pet.start_speaking(stats_text)
         print("📊 Showing drinking statistics")
         
     def show_settings(self):
         """Show settings menu (triple press right)"""
         settings_text = "Settings:\n- Health decay rate\n- Button sensitivity\n- Sound effects\n- Display options"
-        self.mascot_speak(settings_text)
+        self.pet.start_speaking(settings_text)
         print("⚙️ Showing settings menu")
             
     def start_brick_game(self):
@@ -235,7 +246,7 @@ class TamagotchiWaterBottle:
             self.brick_game = BrickGame(self.screen, self.sensor_manager)
             
             # Mascot speaks about the game
-            self.mascot_speak(self.ai_manager.generate_random_feature("", "", 100))
+            self.pet.start_speaking(self.ai_manager.generate_random_feature("", "", 100))
             
             print("🎮 Brick Breaker game started successfully!")
         except Exception as e:
@@ -260,12 +271,9 @@ class TamagotchiWaterBottle:
             self.current_mascot.current_state = MascotState.HAPPY
             self.current_mascot.state_timer = 0
             
-            # Update pet health to match
-            self.pet.hp = self.current_mascot.health
-            
             # Mascot speaks about the game result
             context = f"User just played Brick Breaker and scored {final_score} points!"
-            self.mascot_speak(self.ai_manager.generate_conversation("", "", context))
+            self.pet.start_speaking(self.ai_manager.generate_conversation("", "", context))
             
             print(f"🎮 Brick Breaker game ended! Final score: {final_score}, Level: {final_level}")
             
@@ -276,23 +284,13 @@ class TamagotchiWaterBottle:
         self.current_mascot.health = min(self.current_mascot.max_health, 
                                        self.current_mascot.health + 5)
         
-        # Update pet health to match
-        self.pet.hp = self.current_mascot.health
-        
         # Add hearts for affection
         self.hearts = min(5, self.hearts + 1)
-        self.pet.hearts = self.hearts
         
         # Mascot speaks directly
-        if not self.mascot_speaking:
-            self.mascot_speak(self.ai_manager.generate_conversation("", "", "User just petted me!"))
+        if not self.pet.speaking:
+            self.pet.start_speaking(self.ai_manager.generate_conversation("", "", "User just petted me!"))
             
-    def mascot_speak(self, text):
-        """Make the mascot speak with a speech bubble"""
-        self.mascot_speaking = True
-        self.speech_text = text
-        self.speech_timer = 4.0  # Show speech for 4 seconds
-        
     def add_particles(self, x, y, particle_type):
         """Add particle effects (limited for performance)"""
         # Limit particles for better performance
@@ -359,10 +357,10 @@ class TamagotchiWaterBottle:
         
         # Update mascot health
         self.current_mascot.drink_water(water_amount)
-        self.pet.hp = self.current_mascot.health
         
         # Add particles
-        self.add_particles(self.current_mascot.x, self.current_mascot.y, 'water')
+        mascot_x, mascot_y = self.ui_controller.get_mascot_position()
+        self.add_particles(mascot_x, mascot_y, 'water')
         
         # Check for achievements
         if self.session_water >= MIN_WATER_FOR_ACHIEVEMENT and self.achievement_timer <= 0:
@@ -383,25 +381,13 @@ class TamagotchiWaterBottle:
         # Update mascot
         self.current_mascot.update(dt)
         
-        # Update pet animation
-        animation_state = "idle"
-        if self.current_mascot.current_state == MascotState.HAPPY:
-            animation_state = "happy"
-        elif self.current_mascot.current_state == MascotState.DRINKING:
-            animation_state = "drinking"
-        elif self.current_mascot.current_state == MascotState.SAD:
-            animation_state = "sad"
-            
-        self.pet.update(dt, animation_state)
+        # Update pet (speech bubble)
+        self.pet.update(dt)
         
         # Update particles
         self.update_particles()
         
         # Update timers
-        self.speech_timer -= dt
-        if self.speech_timer <= 0:
-            self.mascot_speaking = False
-            
         self.achievement_timer -= dt
         
         # Reset button press counts after timeout
@@ -416,7 +402,7 @@ class TamagotchiWaterBottle:
             self.current_mascot.save_state()
             
     def draw(self):
-        """Draw everything to screen using partner's UI system"""
+        """Draw everything to offscreen canvas, rotate, then display"""
         if self.playing_brick:
             # Draw brick game
             if self.brick_game:
@@ -424,32 +410,50 @@ class TamagotchiWaterBottle:
                 pygame.display.flip()
             return
             
-        # Clear screen
+        # Clear offscreen canvas
+        self.offscreen.fill(BLACK)
+        
+        # Get mascot position and animation info
+        mascot_x, mascot_y = self.ui_controller.get_mascot_position()
+        animation_state = self.current_mascot.get_animation_state()
+        animation_frame = self.current_mascot.get_animation_frame()
+        
+        # Draw mascot using UI controller
+        self.ui_controller.draw_mascot(self.offscreen, self.current_mascot.type, animation_state, animation_frame)
+        
+        # Draw UI elements using UI controller
+        health_percentage = (self.current_mascot.health / self.current_mascot.max_health) * 100
+        self.ui_controller.draw_ui(self.offscreen, self.hearts, health_percentage)
+        
+        # Draw particles on offscreen canvas
+        self.draw_particles_offscreen()
+        
+        # Draw mascot speech bubble on offscreen canvas
+        if self.pet.speaking:
+            self.pet.draw_speech_bubble(self.offscreen, mascot_x, mascot_y)
+            
+        # Draw achievement popup on offscreen canvas
+        if self.achievement_timer > 0:
+            self.draw_achievement_offscreen()
+        
+        # Rotate the entire offscreen canvas 90 degrees counter-clockwise
+        rotated = pygame.transform.rotate(self.offscreen, 90)
+        
+        # Clear the visible screen
         self.screen.fill(BLACK)
         
-        # Draw pet sprite (partner's implementation)
-        self.pet.draw(self.screen, "idle")
+        # Center the rotated canvas on the screen
+        rotated_rect = rotated.get_rect()
+        rotated_rect.center = (self.DEVICE_WIDTH // 2, self.DEVICE_HEIGHT // 2)
         
-        # Draw UI elements (partner's implementation)
-        health_percentage = (self.current_mascot.health / self.current_mascot.max_health) * 100
-        draw_ui(self.screen, self.hearts, health_percentage)
+        # Blit the rotated canvas to the visible screen
+        self.screen.blit(rotated, rotated_rect)
         
-        # Draw particles
-        self.draw_particles()
-        
-        # Draw mascot speech bubble
-        if self.mascot_speaking:
-            self.draw_speech_bubble()
-            
-        # Draw achievement popup
-        if self.achievement_timer > 0:
-            self.draw_achievement()
-            
         # Update display
         pygame.display.flip()
         
-    def draw_particles(self):
-        """Draw particle effects"""
+    def draw_particles_offscreen(self):
+        """Draw particle effects on offscreen canvas"""
         for particle in self.particles:
             alpha = particle['life'] / 60.0
             color = particle['color']
@@ -465,103 +469,44 @@ class TamagotchiWaterBottle:
                     (particle['x'] + 5, particle['y'] + 2),
                     (particle['x'] + 5, particle['y'] - 3),
                 ]
-                pygame.draw.polygon(self.screen, color, points)
+                pygame.draw.polygon(self.offscreen, color, points)
             else:
                 # Draw simple circle
-                pygame.draw.circle(self.screen, color, 
+                pygame.draw.circle(self.offscreen, color, 
                                  (int(particle['x']), int(particle['y'])), 3)
                                  
-    def draw_speech_bubble(self):
-        """Draw mascot speech bubble (vertical layout)"""
-        if not self.speech_text:
-            return
-            
-        # Calculate bubble size based on text
-        font = pygame.font.Font(None, 20)
-        words = self.speech_text.split()
-        lines = []
-        current_line = ""
-        max_width = 0
-        
-        for word in words:
-            test_line = current_line + " " + word if current_line else word
-            if font.size(test_line)[0] < 200:  # Smaller for vertical layout
-                current_line = test_line
-            else:
-                lines.append(current_line)
-                max_width = max(max_width, font.size(current_line)[0])
-                current_line = word
-        lines.append(current_line)
-        max_width = max(max_width, font.size(current_line)[0])
-        
-        # Draw speech bubble
-        bubble_width = max_width + 30
-        bubble_height = len(lines) * 25 + 15
-        bubble_x = self.pet.x - bubble_width // 2  # Center relative to pet
-        bubble_y = self.pet.y - bubble_height - 50  # Position above pet
-        
-        # Keep bubble on screen
-        if bubble_x < 10:
-            bubble_x = 10
-        elif bubble_x + bubble_width > SCREEN_WIDTH - 10:
-            bubble_x = SCREEN_WIDTH - bubble_width - 10
-            
-        bubble_rect = pygame.Rect(bubble_x, bubble_y, bubble_width, bubble_height)
-        
-        # Bubble background
-        pygame.draw.rect(self.screen, WHITE, bubble_rect)
-        pygame.draw.rect(self.screen, BLACK, bubble_rect, 2)
-        
-        # Draw speech bubble tail
-        tail_x = self.pet.x
-        tail_y = bubble_y + bubble_height
-        tail_points = [
-            (tail_x, tail_y),
-            (tail_x - 10, tail_y + 15),
-            (tail_x + 10, tail_y + 15)
-        ]
-        pygame.draw.polygon(self.screen, WHITE, tail_points)
-        pygame.draw.polygon(self.screen, BLACK, tail_points, 2)
-        
-        # Draw text
-        for i, line in enumerate(lines):
-            text = font.render(line, True, BLACK)
-            text_x = bubble_x + 15
-            text_y = bubble_y + 8 + i * 20
-            self.screen.blit(text, (text_x, text_y))
-        
-    def draw_achievement(self):
-        """Draw achievement popup with pixel-art style"""
+    def draw_achievement_offscreen(self):
+        """Draw achievement popup on offscreen canvas with pixel-art style"""
         if not self.achievement_popup:
             return
             
         # Draw achievement box with pixel-art style
         box_width = 300  # Smaller for vertical layout
         box_height = 100
-        box_x = SCREEN_WIDTH // 2 - box_width // 2
+        box_x = self.APP_WIDTH // 2 - box_width // 2
         box_y = 80
         
         box_rect = pygame.Rect(box_x, box_y, box_width, box_height)
         
         # Box background
-        pygame.draw.rect(self.screen, WHITE, box_rect)
-        pygame.draw.rect(self.screen, BLACK, box_rect, BORDER_THICKNESS)
+        pygame.draw.rect(self.offscreen, WHITE, box_rect)
+        pygame.draw.rect(self.offscreen, BLACK, box_rect, BORDER_THICKNESS)
         
         # Draw pixel-art border effect
         highlight_rect = pygame.Rect(box_x + 3, box_y + 3, box_width - 6, box_height - 6)
-        pygame.draw.rect(self.screen, LIGHT_GRAY, highlight_rect, 1)
+        pygame.draw.rect(self.offscreen, LIGHT_GRAY, highlight_rect, 1)
         
         # Draw title
         font = pygame.font.Font(None, 24)
         text = font.render("ACHIEVEMENT!", True, BLACK)
         text_rect = text.get_rect(center=(box_rect.centerx, box_rect.y + 20))
-        self.screen.blit(text, text_rect)
+        self.offscreen.blit(text, text_rect)
         
         # Draw achievement text
         font = pygame.font.Font(None, 16)
         text = font.render(self.achievement_popup, True, BLACK)
         text_rect = text.get_rect(center=(box_rect.centerx, box_rect.y + 50))
-        self.screen.blit(text, text_rect)
+        self.offscreen.blit(text, text_rect)
             
     def run(self):
         """Main game loop"""

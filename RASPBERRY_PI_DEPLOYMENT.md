@@ -7,8 +7,8 @@ This guide will help you deploy the Tamagotchi Water Bottle application on your 
 
 ### 1. Display Orientation Issue
 - **Problem**: Window appeared vertical but stretched horizontally
-- **Solution**: Created `config_raspberry_pi.py` with vertical dimensions (600x1024) and 90° rotation
-- **Result**: Proper vertical/portrait display on Raspberry Pi (appears sideways on screen)
+- **Solution**: Implemented canvas rotation approach - draw to 600x1024 offscreen canvas, rotate 90°, display on 1024x600 screen
+- **Result**: Proper vertical/portrait display that appears sideways on Raspberry Pi screen
 
 ### 2. Sensor Manager Errors
 - **Problem**: Constant "❌ Error updating sensor data" spam
