@@ -253,14 +253,6 @@ save_data.json
 mascot_state.json
 
 # Screenshots and captures
-screenshots/
-captures/
-*.png
-*.jpg
-*.jpeg
-*.gif
-*.mp4
-*.avi
 
 # Documentation builds
 docs/build/
