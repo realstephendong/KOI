@@ -1,3 +1,4 @@
+from ai_manager import AIManager
 import pygame
 import json
 import time

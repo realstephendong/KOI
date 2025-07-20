@@ -50,7 +50,7 @@ class TamagotchiWaterBottle:
         
         # Initialize components
         self.sensor_manager = SensorManager()
-        self.ai_manager = AIManager()
+        self.current_mascot = AIManager()
         self.ui_controller = UIController()  # New UI controller
         
         # Initialize buttons based on available hardware
