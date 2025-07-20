@@ -355,7 +355,7 @@ class TamagotchiWaterBottle:
         for _ in range(5):
             particle = {
                 'x': x + random.uniform(-20, 20),
-                'y': y + random.uniform(-20, 20),
+                'y': y + 100 + random.uniform(-20, 20),
                 'vx': random.uniform(-2, 2),
                 'vy': random.uniform(-3, -1),
                 'life': 60,
