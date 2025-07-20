@@ -5,12 +5,12 @@ import math
 import random
 import os
 from config_raspberry_pi import *
-from mascot import Mascot, MascotState
+from graphics.mascot import Mascot, MascotState
 from ai_manager import AIManager
 from sensor_manager import SensorManager
-from brick_game import BrickGame
-from ui import UIController
-from pet import Pet
+from graphics.brick_game import BrickGame
+from graphics.ui import UIController
+from graphics.pet import Pet
 
 # Import GPIO for Raspberry Pi
 try:
