@@ -3,6 +3,7 @@ import sys
 import time
 import math
 import random
+import os
 from config import *
 from mascot import Mascot, MascotState
 from ai_manager import AIManager
@@ -25,8 +26,25 @@ class TamagotchiWaterBottle:
     def __init__(self):
         pygame.init()
         
-        # Set up display
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        # Set up display with proper orientation for Raspberry Pi
+        # Check if we're on Raspberry Pi and set appropriate flags
+        import platform
+        is_raspberry_pi = platform.system() == "Linux" and os.path.exists("/proc/cpuinfo")
+        
+        if is_raspberry_pi:
+            # Raspberry Pi specific display settings
+            os.environ['SDL_VIDEODRIVER'] = 'fbcon'
+            os.environ['SDL_FBDEV'] = '/dev/fb0'
+            os.environ['SDL_NOMOUSE'] = '1'
+            
+            # Force fullscreen and proper orientation
+            self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
+            print("🔧 Raspberry Pi detected - Using fullscreen mode")
+        else:
+            # Development/desktop mode
+            self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+            print("💻 Desktop mode detected")
+            
         pygame.display.set_caption("Tamagotchi Water Bottle")
         self.clock = pygame.time.Clock()
         
@@ -387,17 +405,19 @@ class TamagotchiWaterBottle:
     def update_sensor_data(self):
         """Update sensor data and handle drinking detection"""
         try:
-            sensor_data = self.sensor_manager.get_sensor_data()
+            # Update the sensor manager
+            self.sensor_manager.update()
             
-            if sensor_data:
-                # Check for drinking motion
-                if sensor_data.get('drinking_detected', False):
-                    water_amount = sensor_data.get('water_amount', WATER_PER_DRINK)
+            # Check for drinking motion using the correct methods
+            if self.sensor_manager.is_currently_drinking():
+                water_amount = self.sensor_manager.water_amount
+                if water_amount > 0:
                     self.handle_drinking(water_amount)
+                    self.sensor_manager.reset_water_amount()
                     
-                # Check for bottle shaking
-                if sensor_data.get('is_shaking', False):
-                    self.current_mascot.make_dizzy()
+            # Check for bottle shaking
+            if self.sensor_manager.is_shaking:
+                self.current_mascot.make_dizzy()
                     
         except Exception as e:
             print(f"❌ Error updating sensor data: {e}")
