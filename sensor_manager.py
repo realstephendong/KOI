@@ -87,6 +87,9 @@ class SensorManager:
         self.shake_timer = 0
         self.shake_samples = deque(maxlen=10)
         self.calibrated = False
+        # --- Add session end flag ---
+        self.just_ended_drinking = False
+        self.last_session_amount = 0.0
         
         # Shake detection
         self.shake_threshold = 1.2
@@ -336,6 +339,9 @@ class SensorManager:
             print(f"Water consumed this session: {self.session_water_consumed:.1f} ml")
             print(f"Total water consumed: {self.total_water_consumed:.1f} ml")
             print()
+            # --- Set session end flag and amount ---
+            self.just_ended_drinking = True
+            self.last_session_amount = self.session_water_consumed
         
         self.is_drinking = False
         self.session_water_consumed = 0.0
@@ -416,7 +422,10 @@ class SensorManager:
         return {
             'drinking_detected': drinking_detected,
             'shaking_detected': shaking_detected,
-            'water_amount': self.water_amount if drinking_detected else 0
+            'water_amount': self.water_amount if drinking_detected else 0,
+            # --- Add session end info ---
+            'just_ended_drinking': self.just_ended_drinking,
+            'last_session_amount': self.last_session_amount
         }
     
     def generate_simulated_data(self):

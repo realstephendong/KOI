@@ -390,18 +390,17 @@ class TamagotchiWaterBottle:
         try:
             # Update the sensor manager
             self.sensor_manager.update()
-            
-            # Check for drinking motion using the correct methods
-            if self.sensor_manager.is_currently_drinking():
-                water_amount = self.sensor_manager.water_amount
-                if water_amount > 0:
-                    self.handle_drinking(water_amount)
-                    self.sensor_manager.reset_water_amount()
-                    
+
+            # Check for end of drinking session
+            if not self.sensor_manager.is_currently_drinking() and self.sensor_manager.get_session_water_consumed() > 0:
+                water_amount = self.sensor_manager.get_session_water_consumed()
+                self.handle_drinking(water_amount)
+                self.sensor_manager.session_water_consumed = 0.0
+
             # Check for bottle shaking
             if self.sensor_manager.is_shaking:
                 self.current_mascot.make_dizzy()
-                    
+
         except Exception as e:
             print(f"❌ Error updating sensor data: {e}")
             
