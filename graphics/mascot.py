@@ -12,6 +12,7 @@ class MascotState(Enum):
     SAD = "sad"
     DIZZY = "dizzy"
     DEATH = "death"
+    DRINKING = "drinking"  # Added drinking state
 
 class Mascot:
     def __init__(self, mascot_type='koi'):
@@ -38,6 +39,12 @@ class Mascot:
         self.reaction_timer = 0
         self.is_dizzy = False
         self.dizzy_timer = 0
+
+        # Drinking state
+        self.is_drinking = False
+        self.drinking_amount_left = 0
+        self.drinking_rate = 20  # units per second (adjust as needed)
+        self.drinking_total = 0
         
         # AI-generated features
         self.ai_features = []
@@ -51,54 +58,70 @@ class Mascot:
     def update(self, dt, water_drunk=0, is_shaking=False):
         """Update mascot state and animations"""
         current_time = time.time()
-        
-        # Update health based on time
-        if current_time - self.last_health_update >= 2:  # Every 5 seconds
-            self.health -= self.config['health_decay_rate']
-            self.health = max(0, self.health)
-            self.last_health_update = current_time
 
-        if self.health == 0:
-            self.kill()
-        elif self.health <= 40:
-            self.make_sad()
-        else:
-            self.make_idle()
-        
-        # Handle water drinking
-        if water_drunk > 0:
-            self.drink_water(water_drunk)
-        
-        # Handle shaking
-        if is_shaking:
+        # Handle shaking (prioritize dizzy state)
+        if is_shaking and not self.is_dizzy:
             self.make_dizzy()
-        
+
+        # Handle drinking (prioritize drinking state)
+        if self.is_drinking:
+            drink_step = self.drinking_rate * dt
+            if self.drinking_amount_left > 0:
+                actual_drink = min(drink_step, self.drinking_amount_left)
+                self.health = min(self.max_health, self.health + actual_drink)
+                self.hydration_level = min(100, self.hydration_level + actual_drink)
+                self.drinking_amount_left -= actual_drink
+                self.last_drink_time = current_time
+                self.current_state = MascotState.DRINKING
+            else:
+                self.is_drinking = False
+                self.current_state = MascotState.IDLE
+
+        # Only allow state transitions if not dizzy or drinking
+        if not self.is_dizzy and not self.is_drinking:
+            # Update health based on time
+            if current_time - self.last_health_update >= 2:  # Every 2 seconds
+                self.health -= self.config['health_decay_rate']
+                self.health = max(0, self.health)
+                self.last_health_update = current_time
+
+            if self.health == 0:
+                self.kill()
+            elif self.health <= 40:
+                self.make_sad()
+            else:
+                self.make_idle()
+
+        # Handle water drinking event (start drinking if water_drunk > 0 and not already drinking)
+        if water_drunk > 0 and not self.is_drinking:
+            self.drink_water(water_drunk)
+
         # Update state timers
         self.state_timer += dt
         self.reaction_timer -= dt
         self.dizzy_timer -= dt
-        
+
         # Update animations
         self.update_animation(dt)
-        
+
         # Auto-transition states
         self.update_state_transitions()
-        
+
         # Update emotion based on health
         self.update_emotion()
         
     def drink_water(self, amount):
-        """Handle water drinking event"""
-        self.health = min(self.max_health, self.health + amount)
-        self.hydration_level = min(100, self.hydration_level + amount)
-        self.last_drink_time = time.time()
-        
+        """Handle water drinking event (smoothly)"""
+        self.is_drinking = True
+        self.drinking_amount_left = amount
+        self.drinking_total = amount
         self.state_timer = 0
+        self.current_state = MascotState.DRINKING
         
     def make_dizzy(self):
         """Handle bottle shaking"""
         self.is_dizzy = True
-        self.dizzy_timer = 5.0  # Dizzy for 5 seconds
+        self.dizzy_timer = 0  # Dizzy for 0 seconds
         self.current_state = MascotState.DIZZY
         self.state_timer = 0
 
@@ -134,8 +157,10 @@ class Mascot:
             
     def update_state_transitions(self):
         """Handle automatic state transitions"""
-            
         if self.current_state == MascotState.DIZZY and self.dizzy_timer <= 0:
+            self.current_state = MascotState.IDLE
+            self.is_dizzy = False
+        if self.current_state == MascotState.DRINKING and not self.is_drinking:
             self.current_state = MascotState.IDLE
             
     def update_emotion(self):
@@ -163,6 +188,8 @@ class Mascot:
             return "sad"
         elif self.current_state == MascotState.DIZZY:
             return "dizzy"
+        elif self.current_state == MascotState.DRINKING:
+            return "drinking"
         else:
             return "idle"
             

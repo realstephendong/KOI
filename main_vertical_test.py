@@ -11,9 +11,10 @@ from sensor_manager import SensorManager
 from graphics.brick_game import BrickGame
 from graphics.ui import UIController
 from graphics.pet import Pet
+from gpiozero import Button
 
 # GPIO fallback for testing
-GPIO_AVAILABLE = False
+GPIO_AVAILABLE = True
 print("⌨️  Testing vertical orientation on MacBook")
 print("   Press 'A' for yellow button (pet), 'D' for blue button (game)")
 
@@ -43,12 +44,18 @@ class TamagotchiWaterBottle:
         
         # Initialize components
         self.sensor_manager = SensorManager()
+        self.sensor_manager.shake_threshold = 0.5  # Lower threshold for more sensitive shake detection
         self.ai_manager = AIManager()
         self.ui_controller = UIController()  # New UI controller
         
         # Fallback to keyboard for testing
-        self.yellow_button = None
-        self.blue_button = None
+        if (GPIO_AVAILABLE):
+            self.yellow_button = Button(17)
+            self.blue_button = Button(27)
+        else:
+            self.yellow_button = None
+            self.blue_button = None
+
         self.yellow_button_pressed = False
         self.blue_button_pressed = False
         self.yellow_button_up = False # set to true and then false immediately
@@ -371,20 +378,20 @@ class TamagotchiWaterBottle:
     def update_sensor_data(self):
         """Update sensor data and handle drinking detection"""
         try:
-            # Update the sensor manager
-            self.sensor_manager.update()
-            
-            # Check for drinking motion using the correct methods
-            if self.sensor_manager.is_currently_drinking():
-                water_amount = self.sensor_manager.water_amount
+            # Update the sensor manager and get result dict
+            sensor_data = self.sensor_manager.update()
+
+            # Check for end of drinking session using just_ended_drinking flag
+            if sensor_data.get('just_ended_drinking', False):
+                water_amount = sensor_data.get('last_session_amount', 0)
                 if water_amount > 0:
                     self.handle_drinking(water_amount)
-                    self.sensor_manager.reset_water_amount()
-                    
+                self.sensor_manager.just_ended_drinking = False  # Reset flag
+
             # Check for bottle shaking
             if self.sensor_manager.is_shaking:
                 self.current_mascot.make_dizzy()
-                    
+
         except Exception as e:
             print(f"❌ Error updating sensor data: {e}")
             
@@ -536,7 +543,7 @@ class TamagotchiWaterBottle:
         """Draw achievement popup on offscreen canvas with pixel-art style"""
         if not self.achievement_popup:
             return
-            
+        
         # Draw achievement box with pixel-art style
         box_width = 300  # Smaller for vertical layout
         box_height = 100
@@ -553,15 +560,24 @@ class TamagotchiWaterBottle:
         highlight_rect = pygame.Rect(box_x + 3, box_y + 3, box_width - 6, box_height - 6)
         pygame.draw.rect(self.offscreen, LIGHT_GRAY, highlight_rect, 1)
         
-        # Draw title
-        font = pygame.font.Font(None, 24)
-        text = font.render("ACHIEVEMENT!", True, BLACK)
+        # Draw title with custom font
+        font_path = os.path.join("assets", "fonts", "Delicatus-e9OLl.ttf")
+        try:
+            title_font = pygame.font.Font(font_path, 28)
+        except Exception as e:
+            print(f"Error loading custom font: {e}")
+            title_font = pygame.font.Font(None, 28)
+        text = title_font.render("ACHIEVEMENT!", True, BLACK)
         text_rect = text.get_rect(center=(box_rect.centerx, box_rect.y + 20))
         self.offscreen.blit(text, text_rect)
         
-        # Draw achievement text
-        font = pygame.font.Font(None, 16)
-        text = font.render(self.achievement_popup, True, BLACK)
+        # Draw achievement text with custom font
+        try:
+            body_font = pygame.font.Font(font_path, 20)
+        except Exception as e:
+            print(f"Error loading custom font: {e}")
+            body_font = pygame.font.Font(None, 20)
+        text = body_font.render(self.achievement_popup, True, BLACK)
         text_rect = text.get_rect(center=(box_rect.centerx, box_rect.y + 50))
         self.offscreen.blit(text, text_rect)
             
