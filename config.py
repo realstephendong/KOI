@@ -6,7 +6,7 @@ load_dotenv()
 # Screen Configuration - Vertical Mounting
 SCREEN_WIDTH = 480   # Rotated from 800
 SCREEN_HEIGHT = 800  # Rotated from 600
-FPS = 60
+FPS = 1
 
 # Colors - Black and White Theme
 WHITE = (255, 255, 255)
@@ -24,14 +24,6 @@ YELLOW = WHITE
 PINK = LIGHT_GRAY
 PURPLE = DARK_GRAY
 
-# UI Configuration
-UI_PADDING = 20
-BUTTON_HEIGHT = 35
-BUTTON_WIDTH = 80
-BUTTON_SPACING = 10
-STATS_PANEL_WIDTH = 300
-STATS_PANEL_HEIGHT = 200
-
 # Pixel Art Style
 PIXEL_SIZE = 2
 BORDER_THICKNESS = 3
@@ -42,6 +34,9 @@ CORNER_RADIUS = 0  # Sharp corners for pixel art
 # For Raspberry Pi: GPIO pins or other input methods
 BUTTON_LEFT = 'a'    # Pet/Exit button
 BUTTON_RIGHT = 'd'   # Start game button
+
+BUTTON_LEFT_PI = 'yellow button'
+BUTTON_RIGHT_PI = 'blue button' 
 
 # Button Function Modes
 BUTTON_MODE_MAIN = 'main'      # Main screen
@@ -64,6 +59,14 @@ MASCOTS = {
         'color': LIGHT_GRAY,
         'personality': 'calm and caring',
         'favorite_food': 'water bubbles',
+        'base_health': 100,
+        'health_decay_rate': 10  # per minute
+    },
+    'joy': {
+        'name': 'Joy',
+        'color': WHITE,
+        'personality': 'angry and mean',
+        'favorite_food': 'rain',
         'base_health': 100,
         'health_decay_rate': 10  # per minute
     }

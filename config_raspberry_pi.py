@@ -1,6 +1,13 @@
-# Screen Configuration - Vertical Mounting
-SCREEN_WIDTH = 480   # Rotated from 800
-SCREEN_HEIGHT = 800  # Rotated from 600
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Raspberry Pi Display Configuration
+# For vertical/portrait orientation on 1024x600 screen
+# This will display sideways/tilted on the physical screen
+SCREEN_WIDTH = 600   # Vertical width (will be the height on screen)
+SCREEN_HEIGHT = 1024 # Vertical height (will be the width on screen)
 FPS = 60
 
 # Colors - Black and White Theme
@@ -32,11 +39,9 @@ PIXEL_SIZE = 2
 BORDER_THICKNESS = 3
 CORNER_RADIUS = 0  # Sharp corners for pixel art
 
-# Physical Button Configuration
-# For testing on computer: 'a' and 'd' keys
-# For Raspberry Pi: GPIO pins or other input methods
-BUTTON_LEFT = 'a'    # Pet/Exit button
-BUTTON_RIGHT = 'd'   # Start game button
+# Physical Button Configuration for Raspberry Pi
+BUTTON_LEFT = 'a'    # Pet/Exit button (GPIO 17)
+BUTTON_RIGHT = 'd'   # Start game button (GPIO 27)
 
 # Button Function Modes
 BUTTON_MODE_MAIN = 'main'      # Main screen
@@ -52,7 +57,7 @@ MASCOTS = {
         'personality': 'energetic and playful',
         'favorite_food': 'water drops',
         'base_health': 100,
-        'health_decay_rate': 0.5  # per minute
+        'health_decay_rate': 10  # per minute
     },
     'soy': {
         'name': 'Soy',
@@ -60,7 +65,7 @@ MASCOTS = {
         'personality': 'calm and caring',
         'favorite_food': 'water bubbles',
         'base_health': 100,
-        'health_decay_rate': 0.3  # per minute
+        'health_decay_rate': 10  # per minute
     }
 }
 
@@ -93,9 +98,9 @@ ASSETS_DIR = 'assets'
 SAVE_FILE = 'mascot_save.json'
 CALIBRATION_FILE = 'sensor_calibration.json'
 
-# Sensor Configuration
+# Sensor Configuration for Raspberry Pi
 SENSOR_UPDATE_RATE = 60  # Hz
-SENSOR_SIMULATION_MODE = True  # Set to False on Raspberry Pi
+SENSOR_SIMULATION_MODE = False  # Use real sensors on Pi
 MPU6050_ADDRESS = 0x68
 SMBUS_BUS = 1
 
@@ -106,4 +111,10 @@ PARTICLE_SPEED = 3
 
 # Achievement System
 ACHIEVEMENT_COOLDOWN = 300  # seconds between achievements
-MIN_WATER_FOR_ACHIEVEMENT = 50  # ml 
+MIN_WATER_FOR_ACHIEVEMENT = 50  # ml
+
+# Raspberry Pi Specific Settings
+PI_FULLSCREEN = True
+PI_DISPLAY_ROTATION = 0  # 0, 90, 180, 270 degrees
+PI_TOUCHSCREEN = True
+PI_GPIO_BUTTONS = True 
