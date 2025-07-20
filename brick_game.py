@@ -431,6 +431,6 @@ class BrickGame:
         
         # Instructions
         font = pygame.font.Font(None, 24)
-        restart_text = font.render(f"Press {BUTTON_LEFT.upper()} to exit", True, GRAY)
+        restart_text = font.render(f"Press {BUTTON_LEFT_PI.upper()} to exit", True, GRAY)
         restart_rect = restart_text.get_rect(center=(self.width // 2, self.height // 2 + 50))
         self.screen.blit(restart_text, restart_rect) 
