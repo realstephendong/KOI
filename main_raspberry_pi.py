@@ -5,12 +5,12 @@ import math
 import random
 import os
 from config_raspberry_pi import *
-from mascot import Mascot, MascotState
+from graphics.mascot import Mascot, MascotState
 from ai_manager import AIManager
 from sensor_manager import SensorManager
-from brick_game import BrickGame
-from ui import UIController
-from pet import Pet
+from graphics.brick_game import BrickGame
+from graphics.ui import UIController
+from graphics.pet import Pet
 
 # Import GPIO for Raspberry Pi
 try:
@@ -57,6 +57,7 @@ class TamagotchiWaterBottle:
         
         # Initialize components
         self.sensor_manager = SensorManager()
+        self.sensor_manager.shake_threshold = 0.5  # Lower threshold for more sensitive shake detection
         self.ai_manager = AIManager()
         self.ui_controller = UIController()  # New UI controller
         
@@ -271,7 +272,7 @@ class TamagotchiWaterBottle:
         self.hearts = min(5, self.hearts + 2)
         
         # Special state
-        self.current_mascot.current_state = MascotState.HAPPY
+        self.current_mascot.current_state = MascotState.IDLE
         self.current_mascot.state_timer = 0
         
         # Add special particles
@@ -328,7 +329,7 @@ class TamagotchiWaterBottle:
             happiness_boost = min(20, final_score // 10)
             self.current_mascot.health = min(self.current_mascot.max_health, 
                                            self.current_mascot.health + happiness_boost)
-            self.current_mascot.current_state = MascotState.HAPPY
+            self.current_mascot.current_state = MascotState.IDLE
             self.current_mascot.state_timer = 0
             
             # Mascot speaks about the game result
@@ -339,7 +340,7 @@ class TamagotchiWaterBottle:
             
     def pet_mascot(self):
         """Pet the mascot for positive interaction"""
-        self.current_mascot.current_state = MascotState.HAPPY
+        self.current_mascot.current_state = MascotState.IDLE
         self.current_mascot.state_timer = 0
         self.current_mascot.health = min(self.current_mascot.max_health, 
                                        self.current_mascot.health + 5)
@@ -388,20 +389,20 @@ class TamagotchiWaterBottle:
     def update_sensor_data(self):
         """Update sensor data and handle drinking detection"""
         try:
-            # Update the sensor manager
-            self.sensor_manager.update()
-            
-            # Check for drinking motion using the correct methods
-            if self.sensor_manager.is_currently_drinking():
-                water_amount = self.sensor_manager.water_amount
+            # Update the sensor manager and get result dict
+            sensor_data = self.sensor_manager.update()
+
+            # Check for end of drinking session using just_ended_drinking flag
+            if sensor_data.get('just_ended_drinking', False):
+                water_amount = sensor_data.get('last_session_amount', 0)
                 if water_amount > 0:
                     self.handle_drinking(water_amount)
-                    self.sensor_manager.reset_water_amount()
-                    
+                self.sensor_manager.just_ended_drinking = False  # Reset flag
+
             # Check for bottle shaking
             if self.sensor_manager.is_shaking:
                 self.current_mascot.make_dizzy()
-                    
+
         except Exception as e:
             print(f"❌ Error updating sensor data: {e}")
             

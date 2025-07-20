@@ -53,6 +53,7 @@ class UIController:
             # Load mascot sprites for both types
             self.load_mascot_sprites('koi')
             self.load_mascot_sprites('soy')
+            self.load_mascot_sprites('joy')
             
         except pygame.error as e:
             print(f"Error loading UI assets: {e}")
@@ -63,9 +64,24 @@ class UIController:
             if mascot_type == 'koi':
                 idle0 = pygame.image.load("./assets/koi/koi_idle0.png").convert_alpha()
                 idle1 = pygame.image.load("./assets/koi/koi_idle1.png").convert_alpha()
+                sad0 = pygame.image.load("./assets/koi/koi_sad0.png").convert_alpha()
+                sad1 = pygame.image.load("./assets/koi/koi_sad1.png").convert_alpha()
+                dizzy = pygame.image.load("./assets/koi/koi_confused.png").convert_alpha()
+                death = pygame.image.load("./assets/koi/koi_death.png").convert_alpha()
             elif mascot_type == 'soy':
                 idle0 = pygame.image.load("./assets/soy/soy_idle0.png").convert_alpha()
                 idle1 = pygame.image.load("./assets/soy/soy_idle1.png").convert_alpha()
+                sad0 = pygame.image.load("./assets/soy/soy_sad0.png").convert_alpha()
+                sad1 = pygame.image.load("./assets/soy/soy_sad1.png").convert_alpha()
+                dizzy = pygame.image.load("./assets/soy/soy_confused.png").convert_alpha()
+                death = pygame.image.load("./assets/soy/soy_death.png").convert_alpha()
+            elif mascot_type == 'joy':
+                idle0 = pygame.image.load("./assets/joy/joy_idle0.png").convert_alpha()
+                idle1 = pygame.image.load("./assets/joy/joy_idle1.png").convert_alpha()
+                sad0 = pygame.image.load("./assets/joy/joy_sad0.png").convert_alpha()
+                sad1 = pygame.image.load("./assets/joy/joy_sad1.png").convert_alpha()
+                dizzy = pygame.image.load("./assets/joy/joy_confused.png").convert_alpha()
+                death = pygame.image.load("./assets/joy/joy_death.png").convert_alpha()
             else:
                 return
 
@@ -74,12 +90,20 @@ class UIController:
                 (idle0.get_width() * MASCOT_SCALE, idle0.get_height() * MASCOT_SCALE))
             scaled_idle1 = pygame.transform.scale(idle1, 
                 (idle1.get_width() * MASCOT_SCALE, idle1.get_height() * MASCOT_SCALE))
+            scaled_sad0 = pygame.transform.scale(sad0, 
+                (idle1.get_width() * MASCOT_SCALE, sad0.get_height() * MASCOT_SCALE))
+            scaled_sad1 = pygame.transform.scale(sad1, 
+                (idle1.get_width() * MASCOT_SCALE, sad1.get_height() * MASCOT_SCALE))
+            scaled_dizzy = pygame.transform.scale(dizzy, 
+                (idle1.get_width() * MASCOT_SCALE, dizzy.get_height() * MASCOT_SCALE))
+            scaled_death = pygame.transform.scale(death, 
+                (idle1.get_width() * MASCOT_SCALE, death.get_height() * MASCOT_SCALE))
 
             self.mascot_images[mascot_type] = {
                 "idle": [scaled_idle0, scaled_idle1],
-                "happy": [scaled_idle0, scaled_idle1],  # Use idle for now, can be expanded
-                "sad": [scaled_idle0, scaled_idle1],    # Use idle for now, can be expanded
-                "drinking": [scaled_idle0, scaled_idle1] # Use idle for now, can be expanded
+                "sad": [scaled_sad0, scaled_sad1],
+                "dizzy": [scaled_dizzy],
+                "death": [scaled_death]
             }
             
         except pygame.error as e:

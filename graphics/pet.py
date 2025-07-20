@@ -32,7 +32,7 @@ class Pet:
         self.speaking = True
         self.speech_text = text
         self.speech_timer = self.speech_duration
-        
+
     def update(self, dt):
         """Update speech timer"""
         self.speech_timer -= dt
