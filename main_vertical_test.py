@@ -308,7 +308,7 @@ class TamagotchiWaterBottle:
                 self.sensor_manager.just_ended_drinking = False  # Reset flag
 
             # Check for bottle shaking
-            if self.sensor_manager.is_shaking:
+            if sensor_data.get('shaking_detected', False):
                 self.current_mascot.make_dizzy()
 
         except Exception as e:
