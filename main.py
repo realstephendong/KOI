@@ -291,7 +291,8 @@ class TamagotchiWaterBottle:
         try:
             self.playing_brick = True
             self.button_mode = BUTTON_MODE_BRICK
-            self.brick_game = BrickGame(self.screen, self.sensor_manager)
+            # Pass the screen and dimensions for horizontal orientation
+            self.brick_game = BrickGame(self.screen, self.sensor_manager, SCREEN_WIDTH, SCREEN_HEIGHT)
             
             # Mascot speaks about the game
             self.pet.start_speaking(self.ai_manager.generate_random_feature("", "", 100))

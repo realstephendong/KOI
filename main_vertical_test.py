@@ -243,7 +243,8 @@ class TamagotchiWaterBottle:
         try:
             self.playing_brick = True
             self.button_mode = BUTTON_MODE_BRICK
-            self.brick_game = BrickGame(self.screen, self.sensor_manager)
+            # Pass the offscreen canvas and correct dimensions for vertical orientation
+            self.brick_game = BrickGame(self.offscreen, self.sensor_manager, self.APP_WIDTH, self.APP_HEIGHT)
             
             # Mascot speaks about the game
             self.pet.start_speaking(self.ai_manager.generate_random_feature("", "", 100))
@@ -404,9 +405,23 @@ class TamagotchiWaterBottle:
     def draw(self):
         """Draw everything to offscreen canvas, rotate, then display"""
         if self.playing_brick:
-            # Draw brick game
+            # Draw brick game on offscreen canvas
             if self.brick_game:
                 self.brick_game.draw()
+                
+                # Rotate the offscreen canvas 90 degrees counter-clockwise
+                rotated = pygame.transform.rotate(self.offscreen, 90)
+                
+                # Clear the visible screen
+                self.screen.fill(BLACK)
+                
+                # Center the rotated canvas on the screen
+                rotated_rect = rotated.get_rect()
+                rotated_rect.center = (self.DEVICE_WIDTH // 2, self.DEVICE_HEIGHT // 2)
+                
+                # Blit the rotated canvas to the visible screen
+                self.screen.blit(rotated, rotated_rect)
+                
                 pygame.display.flip()
             return
             

@@ -10,11 +10,15 @@ import math
 from config import *
 
 class BrickGame:
-    def __init__(self, screen, sensor_manager):
+    def __init__(self, screen, sensor_manager, app_width=600, app_height=1024):
         self.screen = screen
         self.sensor_manager = sensor_manager
-        self.width = SCREEN_WIDTH
-        self.height = SCREEN_HEIGHT
+        
+        # Use provided dimensions or fallback to config
+        self.width = app_width if app_width else SCREEN_WIDTH
+        self.height = app_height if app_height else SCREEN_HEIGHT
+        
+        print(f"🎮 Brick game initialized with dimensions: {self.width}x{self.height}")
         
         # Game state
         self.running = True
@@ -58,6 +62,9 @@ class BrickGame:
         # Tilt control
         self.tilt_sensitivity = 2.0
         self.last_tilt = 0
+        
+        # Game loop timing
+        self.last_update = pygame.time.get_ticks()
         
     def setup_bricks(self):
         """Setup brick layout"""
@@ -266,6 +273,17 @@ class BrickGame:
                 
     def draw(self):
         """Draw the game"""
+        # Calculate delta time
+        current_time = pygame.time.get_ticks()
+        dt = (current_time - self.last_update) / 1000.0
+        self.last_update = current_time
+        
+        # Update game state
+        self.update(dt)
+        
+        # Handle events
+        self.handle_events()
+        
         # Clear screen
         self.screen.fill(BLACK)
         
