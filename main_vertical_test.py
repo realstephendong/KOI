@@ -164,6 +164,7 @@ class TamagotchiWaterBottle:
                 # Triple press: Special interaction
                 self.special_mascot_interaction()
         elif self.button_mode == BUTTON_MODE_BRICK:
+            # In brick game mode, yellow button exits the game
             self.exit_brick_game()
             
     def handle_right_button_combo(self, current_time):
@@ -189,10 +190,10 @@ class TamagotchiWaterBottle:
                 # Triple press: Settings menu
                 self.show_settings()
         elif self.button_mode == BUTTON_MODE_BRICK:
-            # In brick game mode, right button launches the ball
+            # In brick game mode, blue button launches the ball
             if self.brick_game and not self.brick_game.ball_launched:
                 self.brick_game.launch_ball()
-                print("🎾 Ball launched via button press!")
+                print("🎾 Ball launched via blue button!")
             
     def handle_brick_game_events(self):
         """Handle events specifically for brick game mode"""
@@ -272,7 +273,8 @@ class TamagotchiWaterBottle:
             self.playing_brick = True
             self.button_mode = BUTTON_MODE_BRICK
             # Pass the offscreen canvas and correct dimensions for vertical orientation
-            self.brick_game = BrickGame(self.offscreen, self.sensor_manager, self.APP_WIDTH, self.APP_HEIGHT)
+            # Set test_mode=True for keyboard controls
+            self.brick_game = BrickGame(self.offscreen, self.sensor_manager, self.APP_WIDTH, self.APP_HEIGHT, test_mode=True)
             
             # Mascot speaks about the game
             self.pet.start_speaking(self.ai_manager.generate_random_feature("", "", 100))

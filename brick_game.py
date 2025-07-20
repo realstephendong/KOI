@@ -10,15 +10,20 @@ import math
 from config import *
 
 class BrickGame:
-    def __init__(self, screen, sensor_manager, app_width=600, app_height=1024):
+    def __init__(self, screen, sensor_manager, app_width=600, app_height=1024, test_mode=False):
         self.screen = screen
         self.sensor_manager = sensor_manager
+        self.test_mode = test_mode  # Track if we're in test mode
         
         # Use provided dimensions or fallback to config
         self.width = app_width if app_width else SCREEN_WIDTH
         self.height = app_height if app_height else SCREEN_HEIGHT
         
         print(f"🎮 Brick game initialized with dimensions: {self.width}x{self.height}")
+        if test_mode:
+            print("🧪 Running in TEST MODE with keyboard controls")
+        else:
+            print("📱 Running in DEVICE MODE with button-only controls")
         
         # Game state
         self.running = True
@@ -60,7 +65,7 @@ class BrickGame:
         self.score_flash_timer = 0
         
         # Tilt control
-        self.tilt_sensitivity = 2.0
+        self.tilt_sensitivity = 0.3  # Much less sensitive (was 2.0)
         self.last_tilt = 0
         
         # Game loop timing
@@ -116,7 +121,7 @@ class BrickGame:
                 elif event.key == pygame.K_SPACE or event.key == ord(BUTTON_RIGHT):
                     if not self.ball_launched:
                         self.launch_ball()
-                        
+            
     def launch_ball(self):
         """Launch the ball from paddle"""
         if not self.ball_launched:
@@ -385,9 +390,12 @@ class BrickGame:
         controls_text = controls_font.render("Tilt bottle to move paddle", True, GRAY)
         self.screen.blit(controls_text, (10, self.height - 60))
         
-        # Draw launch instructions
+        # Draw launch instructions based on mode
         if not self.ball_launched:
-            launch_text = controls_font.render("Press SPACE or D to launch ball", True, WHITE)
+            if self.test_mode:
+                launch_text = controls_font.render("Press blue button or SPACE to launch ball", True, WHITE)
+            else:
+                launch_text = controls_font.render("Press blue button to launch ball", True, WHITE)
             self.screen.blit(launch_text, (10, self.height - 40))
             
             # Show auto-launch countdown
@@ -395,7 +403,10 @@ class BrickGame:
                 countdown_text = controls_font.render(f"Auto-launch in {self.auto_launch_timer:.1f}s", True, LIGHT_GRAY)
                 self.screen.blit(countdown_text, (10, self.height - 20))
         else:
-            exit_text = controls_font.render(f"Press {BUTTON_LEFT.upper()} to exit", True, GRAY)
+            if self.test_mode:
+                exit_text = controls_font.render("Press yellow button or ESC to exit", True, GRAY)
+            else:
+                exit_text = controls_font.render("Press yellow button to exit", True, GRAY)
             self.screen.blit(exit_text, (10, self.height - 20))
         
     def draw_game_over(self):
