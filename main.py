@@ -48,6 +48,14 @@ class TamagotchiWaterBottle:
         self.last_button_press = 0
         self.button_debounce = 0.3  # Slightly longer debounce for cleaner interaction
         
+        # Button press counting system
+        self.left_button_press_count = 0
+        self.right_button_press_count = 0
+        self.button_combo_timer = 0
+        self.button_combo_timeout = 1.0  # Time window for button combinations
+        self.last_left_press_time = 0
+        self.last_right_press_time = 0
+        
         # Statistics
         self.total_water_drunk = 0
         self.daily_goal = 2000  # ml
@@ -66,7 +74,7 @@ class TamagotchiWaterBottle:
         print(f"🎮 Button controls: {BUTTON_LEFT} (pet) and {BUTTON_RIGHT} (game)")
         
     def handle_events(self):
-        """Handle pygame events for button input"""
+        """Handle pygame events for button input with press counting"""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
@@ -74,7 +82,7 @@ class TamagotchiWaterBottle:
             elif event.type == pygame.KEYDOWN:
                 current_time = time.time()
                 
-                # Only process button presses if enough time has passed
+                # Only process button presses if enough time has passed for debounce
                 if current_time - self.last_button_press < self.button_debounce:
                     continue
                     
@@ -85,11 +93,11 @@ class TamagotchiWaterBottle:
                         self.running = False
                         
                 elif event.key == ord(BUTTON_LEFT):
-                    self.handle_left_button()
+                    self.handle_left_button_combo(current_time)
                     self.last_button_press = current_time
                     
                 elif event.key == ord(BUTTON_RIGHT):
-                    self.handle_right_button()
+                    self.handle_right_button_combo(current_time)
                     self.last_button_press = current_time
                     
     def handle_left_button(self):
@@ -100,6 +108,111 @@ class TamagotchiWaterBottle:
             self.pet_mascot()
         elif self.button_mode == BUTTON_MODE_BRICK:
             self.exit_brick_game()
+            
+    def handle_left_button_combo(self, current_time):
+        """Handle left button with press counting for different actions"""
+        # Check if this is part of a combo
+        if current_time - self.last_left_press_time < self.button_combo_timeout:
+            self.left_button_press_count += 1
+        else:
+            self.left_button_press_count = 1
+            
+        self.last_left_press_time = current_time
+        print(f"🔘 Left button pressed {self.left_button_press_count} times")
+        
+        # Handle different press counts
+        if self.button_mode == BUTTON_MODE_MAIN:
+            if self.left_button_press_count == 1:
+                # Single press: Pet mascot
+                self.pet_mascot()
+            elif self.left_button_press_count == 2:
+                # Double press: Switch mascot
+                self.switch_mascot()
+            elif self.left_button_press_count == 3:
+                # Triple press: Special interaction
+                self.special_mascot_interaction()
+        elif self.button_mode == BUTTON_MODE_BRICK:
+            self.exit_brick_game()
+            
+    def handle_right_button_combo(self, current_time):
+        """Handle right button with press counting for different actions"""
+        # Check if this is part of a combo
+        if current_time - self.last_right_press_time < self.button_combo_timeout:
+            self.right_button_press_count += 1
+        else:
+            self.right_button_press_count = 1
+            
+        self.last_right_press_time = current_time
+        print(f"🔘 Right button pressed {self.right_button_press_count} times")
+        
+        # Handle different press counts
+        if self.button_mode == BUTTON_MODE_MAIN:
+            if self.right_button_press_count == 1:
+                # Single press: Start game
+                self.start_brick_game()
+            elif self.right_button_press_count == 2:
+                # Double press: Show stats
+                self.show_stats()
+            elif self.right_button_press_count == 3:
+                # Triple press: Settings menu
+                self.show_settings()
+            
+    def switch_mascot(self):
+        """Switch between different mascots"""
+        current_type = self.current_mascot.type
+        if current_type == 'koi':
+            new_type = 'soy'
+        else:
+            new_type = 'koi'
+            
+        # Save current mascot state
+        self.current_mascot.save_state()
+        
+        # Create new mascot
+        self.current_mascot = Mascot(new_type)
+        self.current_mascot.load_state()
+        
+        # Update pet to match new mascot
+        self.pet = Pet(new_type, self.current_mascot.health, self.hearts)
+        
+        # Mascot speaks about the switch
+        self.mascot_speak(f"Hi! I'm {self.current_mascot.name}! Nice to meet you!")
+        
+        print(f"🔄 Switched mascot from {current_type} to {new_type}")
+        
+    def special_mascot_interaction(self):
+        """Special interaction with mascot (triple press)"""
+        # Give extra health and hearts
+        self.current_mascot.health = min(self.current_mascot.max_health, 
+                                       self.current_mascot.health + 15)
+        self.pet.hp = self.current_mascot.health
+        
+        self.hearts = min(5, self.hearts + 2)
+        self.pet.hearts = self.hearts
+        
+        # Special state
+        self.current_mascot.current_state = MascotState.HAPPY
+        self.current_mascot.state_timer = 0
+        
+        # Add special particles
+        self.add_particles(self.current_mascot.x, self.current_mascot.y, 'sparkle')
+        
+        # Special message
+        self.mascot_speak("Wow! You really love me! Thank you for the special attention!")
+        
+        print("✨ Special mascot interaction triggered!")
+        
+    def show_stats(self):
+        """Show drinking statistics (double press right)"""
+        stats_text = f"Today's Progress:\nWater: {self.session_water}ml\nTotal: {self.total_water_drunk}ml\nGoal: {self.daily_goal}ml"
+        self.mascot_speak(stats_text)
+        print("📊 Showing drinking statistics")
+        
+    def show_settings(self):
+        """Show settings menu (triple press right)"""
+        settings_text = "Settings:\n- Health decay rate\n- Button sensitivity\n- Sound effects\n- Display options"
+        self.mascot_speak(settings_text)
+        print("⚙️ Showing settings menu")
             
     def handle_right_button(self):
         """Handle right button press (start game)"""
@@ -283,6 +396,13 @@ class TamagotchiWaterBottle:
             self.mascot_speaking = False
             
         self.achievement_timer -= dt
+        
+        # Reset button press counts after timeout
+        current_time = time.time()
+        if current_time - self.last_left_press_time > self.button_combo_timeout:
+            self.left_button_press_count = 0
+        if current_time - self.last_right_press_time > self.button_combo_timeout:
+            self.right_button_press_count = 0
         
         # Auto-save every 30 seconds
         if int(time.time()) % 30 == 0:
