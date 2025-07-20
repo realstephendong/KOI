@@ -13,7 +13,7 @@ from graphics.ui import UIController
 from graphics.pet import Pet
 
 # GPIO fallback for testing
-GPIO_AVAILABLE = False
+GPIO_AVAILABLE = True
 print("⌨️  Testing vertical orientation on MacBook")
 print("   Press 'A' for yellow button (pet), 'D' for blue button (game)")
 
@@ -54,7 +54,7 @@ class TamagotchiWaterBottle:
         else:
             self.yellow_button = None
             self.blue_button = None
-            
+
         self.yellow_button_pressed = False
         self.blue_button_pressed = False
         self.yellow_button_up = False # set to true and then false immediately
