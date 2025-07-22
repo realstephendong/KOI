@@ -10,19 +10,32 @@ A smart, interactive water bottle that encourages healthy hydration habits throu
 - **Emotional States**: Mascots change emotions based on health levels (happy → content → worried → sad → dying)
 - **Interactive Touch Controls**: Pet, play, and interact with your mascots
 
+### 🕹️ Mini-Games
+- **Brick Breaker Game**: Play a vertical brick breaker mini-game, controlled by tilting the bottle. Paddle moves with tilt; mascots comment on your gameplay.
+
+### 🧑‍🤝‍🧑 Mascots
+- **Three Unique Mascots**: Koi (energetic and playful), Soy (calm and caring), and Joy (angry and mean)
+- **Switch Mascot**: Cycle between Koi, Soy, and Joy with the pet button
+
 ### 🧠 AI-Powered Features
 - **Dynamic Conversations**: Gemini AI generates personalized responses from your mascots
 - **Random Activities**: AI creates unique mini-games and features every 5 minutes
 - **Smart Achievements**: Personalized achievements based on drinking patterns and streaks
 - **Fallback System**: Works offline with pre-programmed features
+- **Personality-Driven Responses**: Each mascot has unique, personality-driven responses for petting, drinking, games, and achievements
 
 ### 📊 Health Tracking
 - **Drinking Detection**: GY521 gyroscope detects tilt and duration for accurate water measurement
 - **Daily Goals**: Track progress toward hydration targets
 - **Streak System**: Maintain daily drinking streaks for rewards
 - **Statistics Dashboard**: Visual progress tracking
+- **Session-Based Drinking Detection**: Tracks each drinking session, with improved tilt/noise filtering and per-session water calculation
+- **Shake Detection**: Mascots react (get dizzy) if the bottle is shaken
 
-### 🎨 Visual Effects
+### 🎨 Visual Effects & UI
+- **Centralized UI Controller**: Consistent mascot, health bar, and heart display
+- **Speech Bubbles**: Mascots speak in custom speech bubbles with dynamic sizing and custom font
+- **Custom Font Support**: Pixel-style font for UI and mini-games
 - **Particle Systems**: Hearts, sparkles, and water droplets for visual feedback
 - **Smooth Animations**: Bouncing, rotation, and state transitions
 - **Health Bars**: Real-time visual health indicators
@@ -69,7 +82,7 @@ Connect the GY521 module to your Raspberry Pi:
 
 ### 5. Run the Application
 ```bash
-python main.py
+python main_vertical_test.py
 ```
 
 ## 🎯 Usage Guide
@@ -78,22 +91,33 @@ python main.py
 - **Touch Screen**: Interact with mascots and UI elements
 - **Escape Key**: Exit the application
 - **Space Bar**: Pause/unpause the game
+- **A Key**: Pet/switch mascot (desktop mode)
+- **D Key**: Start mini-game/confirm (desktop mode)
 
 ### Mascot Interactions
 - **Pet Button**: Give your mascot affection (+5 health)
-- **Play Button**: Start AI-generated activities
-- **Switch Mascot**: Toggle between Koi and Soy
+- **Play Button**: Start AI-generated activities or mini-game
+- **Switch Mascot**: Cycle between Koi, Soy, and Joy
+
+### Mini-Game: Brick Breaker
+- **Start Game**: Press the play button (or 'D' key)
+- **Control Paddle**: Tilt the bottle left/right (or use keyboard in test mode)
+- **Lives & Levels**: Progress through levels, avoid losing all lives
+- **Mascot Commentary**: Mascots react to your gameplay
 
 ### Drinking Detection
 1. **Tilt Detection**: Bottle must be tilted >45° for drinking detection
 2. **Duration Tracking**: Must maintain tilt for 2+ seconds
 3. **Water Calculation**: Amount based on tilt angle and duration
 4. **Health Boost**: Drinking restores mascot health
+- **Session Tracking**: Each drinking session is measured and reported
+- **Shake Detection**: Shaking the bottle makes mascots dizzy
 
 ### AI Features
 - **Automatic Updates**: New features generated every 5 minutes
 - **Contextual Responses**: AI considers mascot personality and current state
 - **Offline Mode**: Fallback features when AI is unavailable
+- **Personality-Driven Responses**: Each mascot has unique responses for petting, drinking (small/large sips), game start/end, and achievements
 
 ## 🔧 Configuration
 
@@ -116,6 +140,14 @@ MASCOTS = {
         'name': 'Soy', 
         'personality': 'calm and caring',
         'health_decay_rate': 0.3  # per minute
+    },
+    'joy': {
+        'name': 'Joy',
+        'color': WHITE,
+        'personality': 'angry and mean',
+        'favorite_food': 'rain',
+        'base_health': 100,
+        'health_decay_rate': 10  # per minute
     }
 }
 ```
@@ -130,6 +162,21 @@ HEALTH_STATES = {
     'critical': {'min': 0, 'emotion': 'dying'}
 }
 ```
+
+# Game Configuration
+BRICK_GAME_LIVES = 3
+BRICK_GAME_BALL_SPEED = 5
+BRICK_GAME_PADDLE_SPEED = 8
+BRICK_GAME_TILT_SENSITIVITY = 0.5
+
+# Particle Effects
+MAX_PARTICLES = 20
+PARTICLE_LIFETIME = 60  # frames
+PARTICLE_SPEED = 3
+
+# Achievement System
+ACHIEVEMENT_COOLDOWN = 300  # seconds between achievements
+MIN_WATER_FOR_ACHIEVEMENT = 50  # ml
 
 ## 🎨 Customization
 
@@ -148,6 +195,8 @@ Modify `ai_manager.py` to change:
 - Modify colors in `config.py`
 - Add custom particle effects
 - Create new background patterns
+- Add new mascots by updating `config.py`, creating sprites, and adding behaviors in `mascot.py` and responses in `ai_manager.py`
+- Customize mini-game settings in `config.py`
 
 ## 🐛 Troubleshooting
 
@@ -175,17 +224,18 @@ Modify `ai_manager.py` to change:
 - **Advanced Analytics**: Detailed health insights
 - **Social Features**: Share achievements
 
-### Development Mode
+### Development & Simulation Mode
 ```bash
-# Run with sensor simulation
-python main.py --simulate
+# Run with sensor simulation (for desktop testing)
+python main_vertical_test.py
 
 # Debug mode with console output
-python main.py --debug
+python main_vertical_test.py --debug
 
 # Custom config file
-python main.py --config custom_config.py
+python main_vertical_test.py --config custom_config.py
 ```
+- **Keyboard Controls**: Use 'A' (pet/switch mascot) and 'D' (play/confirm) for testing on desktop
 
 ## 📝 API Documentation
 
@@ -211,6 +261,14 @@ ai = AIManager()
 feature = ai.generate_random_feature(name, personality, health)
 conversation = ai.generate_conversation(name, personality, context)
 achievement = ai.generate_achievement(water_amount, streak_days)
+```
+
+### BrickGame Class
+```python
+brick_game = BrickGame(screen, sensor_manager)
+brick_game.launch_ball()
+brick_game.update(dt)
+brick_game.draw()
 ```
 
 ## 🤝 Contributing
