@@ -1,6 +1,6 @@
 # 🐟 Tamagotchi Water Bottle 🥤
 
-A smart, interactive water bottle that encourages healthy hydration habits through gamification and AI-powered features. Meet Koi and Soy, your adorable digital companions who thrive on your water drinking habits!
+A smart, interactive water bottle that encourages healthy hydration habits through gamification and AI-powered features. Meet Koi, Soy, and Joy, your adorable digital companions who thrive on your water drinking habits!
 
 ## 🌟 Features
 
@@ -16,13 +16,6 @@ A smart, interactive water bottle that encourages healthy hydration habits throu
 ### 🧑‍🤝‍🧑 Mascots
 - **Three Unique Mascots**: Koi (energetic and playful), Soy (calm and caring), and Joy (angry and mean)
 - **Switch Mascot**: Cycle between Koi, Soy, and Joy with the pet button
-
-### 🧠 AI-Powered Features
-- **Dynamic Conversations**: Gemini AI generates personalized responses from your mascots
-- **Random Activities**: AI creates unique mini-games and features every 5 minutes
-- **Smart Achievements**: Personalized achievements based on drinking patterns and streaks
-- **Fallback System**: Works offline with pre-programmed features
-- **Personality-Driven Responses**: Each mascot has unique, personality-driven responses for petting, drinking, games, and achievements
 
 ### 📊 Health Tracking
 - **Drinking Detection**: GY521 gyroscope detects tilt and duration for accurate water measurement
@@ -68,10 +61,8 @@ pip install -r requirements.txt
 ```
 
 ### 3. Set Up Environment Variables
-Create a `.env` file in the project root:
-```bash
-GEMINI_API_KEY=your_gemini_api_key_here
-```
+Create a `.env` file in the project root
+Follow the `.env.example` to correctly format your `.env` file
 
 ### 4. Configure Sensor
 Connect the GY521 module to your Raspberry Pi:
@@ -106,24 +97,17 @@ python main_vertical_test.py
 - **Mascot Commentary**: Mascots react to your gameplay
 
 ### Drinking Detection
-1. **Tilt Detection**: Bottle must be tilted >45° for drinking detection
-2. **Duration Tracking**: Must maintain tilt for 2+ seconds
-3. **Water Calculation**: Amount based on tilt angle and duration
-4. **Health Boost**: Drinking restores mascot health
+1. **Tilt Detection**: Bottle must be tilted >70° for drinking detection
+2. **Water Calculation**: Amount based on tilt angle and duration
+3. **Health Boost**: Drinking restores mascot health
 - **Session Tracking**: Each drinking session is measured and reported
 - **Shake Detection**: Shaking the bottle makes mascots dizzy
-
-### AI Features
-- **Automatic Updates**: New features generated every 5 minutes
-- **Contextual Responses**: AI considers mascot personality and current state
-- **Offline Mode**: Fallback features when AI is unavailable
-- **Personality-Driven Responses**: Each mascot has unique responses for petting, drinking (small/large sips), game start/end, and achievements
 
 ## 🔧 Configuration
 
 ### Sensor Settings (`config.py`)
 ```python
-DRINKING_THRESHOLD = 45  # degrees
+DRINKING_THRESHOLD = 70  # degrees
 DRINKING_DURATION = 2.0  # seconds
 WATER_PER_DRINK = 10     # ml
 ```
@@ -134,12 +118,12 @@ MASCOTS = {
     'koi': {
         'name': 'Koi',
         'personality': 'energetic and playful',
-        'health_decay_rate': 0.5  # per minute
+        'health_decay_rate': 10 # per minute
     },
     'soy': {
         'name': 'Soy', 
         'personality': 'calm and caring',
-        'health_decay_rate': 0.3  # per minute
+        'health_decay_rate': 10  # per minute
     },
     'joy': {
         'name': 'Joy',
@@ -285,18 +269,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🙏 Acknowledgments
 
-- **Gemini AI** for intelligent conversation and feature generation
 - **Pygame** for the game engine
 - **Raspberry Pi Foundation** for the hardware platform
 - **Open Source Community** for various libraries and tools
-
-## 📞 Support
-
-For questions, issues, or feature requests:
-- Create an issue on GitHub
-- Check the troubleshooting section
-- Review the configuration options
-
----
 
 **Stay hydrated and have fun with your digital companions! 💧🐟** 
